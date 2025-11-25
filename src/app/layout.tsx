@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Rent Jedi - Rent. Get Paid.",
   description:
-    "a ridiculously simple rental management platform for landlords and real state pals",
+    "A ridiculously simple rental management platform for landlords and real state pals",
 };
 
 export default function RootLayout({
