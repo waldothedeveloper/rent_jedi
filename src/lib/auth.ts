@@ -11,12 +11,6 @@ type SendResetPasswordPayload = { user: User; url: string; token: string };
 type OnPasswordResetPayload = { user: User };
 
 function getSendEmailUrl(request?: Request) {
-  const envUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL;
-
-  if (envUrl) {
-    return `${envUrl.replace(/\/$/, "")}/api/send`;
-  }
-
   const origin = request?.headers?.get?.("origin");
   return `${(origin ?? "http://localhost:3000").replace(/\/$/, "")}/api/send`;
 }
