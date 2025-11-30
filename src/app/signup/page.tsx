@@ -1,5 +1,5 @@
 import { SharedAuthHeader } from "@/components/shared-auth-header";
-import { SignupForm } from "@/components/signup-form";
+import { SignupForm } from "@/app/signup/signup-form";
 
 export default function SignupPage() {
   return (
