@@ -10,21 +10,20 @@ import { twoFactor } from "better-auth/plugins";
 type SendResetPasswordPayload = { user: User; url: string; token: string };
 type OnPasswordResetPayload = { user: User };
 
-function getSendEmailUrl(request?: Request) {
-  const origin = request?.headers?.get?.("origin");
-  return `${(origin ?? "http://localhost:3000").replace(/\/$/, "")}/api/send`;
-}
-
 export const auth = betterAuth({
   appName: "Rent Jedi",
   plugins: [twoFactor(), nextCookies()],
   emailAndPassword: {
     enabled: true,
-    sendResetPassword: async (
-      { user, url, token: _token }: SendResetPasswordPayload,
-      request?: Request
-    ) => {
-      const apiSendUrl = getSendEmailUrl(request);
+    sendResetPassword: async ({
+      user,
+      url,
+      token: _token,
+    }: SendResetPasswordPayload) => {
+      const apiSendUrl =
+        process.env.NODE_ENV === "development"
+          ? "http://localhost:3000/api/send"
+          : "https://rentjedi.com/api/send";
 
       await fetch(apiSendUrl, {
         method: "POST",
@@ -40,11 +39,11 @@ export const auth = betterAuth({
         console.error("Failed to send reset password email", error);
       });
     },
-    onPasswordReset: async (
-      { user }: OnPasswordResetPayload,
-      request?: Request
-    ) => {
-      const apiSendUrl = getSendEmailUrl(request);
+    onPasswordReset: async ({ user }: OnPasswordResetPayload) => {
+      const apiSendUrl =
+        process.env.NODE_ENV === "development"
+          ? "http://localhost:3000/api/send"
+          : "https://rentjedi.com/api/send";
 
       await fetch(apiSendUrl, {
         method: "POST",
