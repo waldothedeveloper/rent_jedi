@@ -28,6 +28,50 @@ function getBaseUrl(headersList?: HeadersLike) {
   return withProtocol.replace(/\/$/, "");
 }
 
+export async function getSessionOrRedirect() {
+  const sessionResponse = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  const session = sessionResponse;
+
+  if (!session) {
+    redirect("/login");
+  }
+
+  return session;
+}
+
+export async function resendVerificationEmailAction() {
+  const headersList = await headers();
+
+  const sessionResponse = await getSessionOrRedirect();
+
+  const email = sessionResponse?.user?.email;
+
+  if (!email) {
+    return {
+      success: false as const,
+      message: "Email is required to resend verification email",
+    };
+  }
+
+  const callbackURL = `${getBaseUrl(headersList)}/dashboard`;
+
+  await auth.api.sendVerificationEmail({
+    headers: headersList,
+    body: {
+      email,
+      callbackURL,
+    },
+  });
+
+  return {
+    success: true as const,
+    message: "Verification email re-sent successfully!",
+  };
+}
+
 export async function signUpAction(credentials: z.infer<typeof signUpSchema>) {
   const result = signUpSchema.safeParse(credentials);
 
@@ -44,7 +88,7 @@ export async function signUpAction(credentials: z.infer<typeof signUpSchema>) {
     },
   });
 
-  redirect("/dashboard");
+  redirect(`/verify-email`);
 }
 
 export async function loginAction(credentials: z.infer<typeof loginSchema>) {
