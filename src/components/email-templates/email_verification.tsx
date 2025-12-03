@@ -42,20 +42,20 @@ export const EmailVerification = ({
         }}
       >
         <Body className="bg-[#f6f9fc] py-2.5">
-          <Preview>Verify your email to finish setting up Rent Jedi</Preview>
+          <Preview>Verify your email to finish setting up Bloom Rent</Preview>
           <Container className="bg-white border border-solid border-[#f0f0f0] p-[45px]">
             <Img
               src={`${baseUrl}/images/rj_logo.svg`}
               width="40"
               height="33"
-              alt="Rent Jedi Logo"
+              alt="Bloom Rent Logo"
             />
             <Section>
               <Text className="text-base font-dropbox font-light text-[#404040] leading-[26px]">
                 Hi {firstName ?? "there"},
               </Text>
               <Text className="text-base font-dropbox font-light text-[#404040] leading-[26px]">
-                Welcome to Rent Jedi! Confirm your email address to activate
+                Welcome to Bloom Rent! Confirm your email address to activate
                 your account and start exploring your dashboard.
               </Text>
               <Button
@@ -65,14 +65,14 @@ export const EmailVerification = ({
                 Verify email
               </Button>
               <Text className="text-base font-dropbox font-light text-[#404040] leading-[26px]">
-                If you didn&apos;t create this account, you can safely ignore this
-                email.
+                If you didn&apos;t create this account, you can safely ignore
+                this email.
               </Text>
               <Text className="text-base font-dropbox font-light text-[#404040] leading-[26px]">
                 Thanks,
               </Text>
               <Text className="text-base font-dropbox font-light text-[#404040] leading-[26px]">
-                The Rent Jedi Team
+                The Bloom Rent Team
               </Text>
             </Section>
           </Container>

@@ -16,8 +16,14 @@ const apiSendUrl =
     : "https://rentjedi.com/api/send";
 
 export const auth = betterAuth({
-  appName: "Rent Jedi",
+  appName: "Bloom Rent",
   trustedOrigins: ["http://localhost:3000", "https://rentjedi.com"],
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID as string,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+    },
+  },
   plugins: [twoFactor(), nextCookies()],
   emailVerification: {
     autoSignInAfterVerification: true,
@@ -29,7 +35,7 @@ export const auth = betterAuth({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           to: user.email,
-          subject: "Verify your Rent Jedi email",
+          subject: "Verify your Bloom Rent email",
           firstName: user.name,
           verificationUrl: url,
           template: "email-verification",
@@ -58,7 +64,7 @@ export const auth = betterAuth({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           to: user.email,
-          subject: "Reset your Rent Jedi password",
+          subject: "Reset your Bloom Rent password",
           firstName: user.name,
           resetUrl: url,
           template: "reset",
@@ -73,7 +79,7 @@ export const auth = betterAuth({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           to: user.email,
-          subject: "Your Rent Jedi password was reset",
+          subject: "Your Bloom Rent password was reset",
           firstName: user.name,
           template: "reset-confirmation",
         }),

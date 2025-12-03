@@ -1,19 +1,8 @@
 import { EmailForm } from "./email-form";
 import Link from "next/link";
 import { SharedAuthHeader } from "@/components/shared-auth-header";
-import { getSessionOrRedirect } from "@/app/actions/auth";
-import { redirect } from "next/navigation";
 
 export default async function VerifyEmailPage() {
-  const sessionResponse = await getSessionOrRedirect();
-
-  const { emailVerified, email } = sessionResponse.user || {};
-
-  if (emailVerified) {
-    // If the email is already verified, redirect to dashboard
-    redirect("/dashboard");
-  }
-
   return (
     <div className="bg-muted flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
       <div className="flex w-full max-w-xl flex-col gap-12">
@@ -24,16 +13,14 @@ export default async function VerifyEmailPage() {
           </h1>
           <div className="text-center">
             <p>Almost there! We’ve sent a verification link to your email.</p>
-            <p>
-              <strong>{email ?? "your email"}</strong>
+            <p className="text-center">
+              Click it to confirm your email and complete your Bloom Rent
+              training. <br />
+              If you don’t see it, <strong>check your spam folder.</strong>
             </p>
           </div>
-          <p className="text-center">
-            Click it to confirm your email and complete your Rent Jedi training.{" "}
-            <br />
-            If you don’t see it, <strong>check your spam folder.</strong>
-          </p>
-          <EmailForm email={email} />
+
+          <EmailForm />
           <div className="flex items-center justify-center gap-2 text-center">
             <p>Need help? </p>
             <Link href="/contact-support" className="hover:underline">
