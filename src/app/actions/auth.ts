@@ -91,6 +91,19 @@ export async function signUpAction(credentials: z.infer<typeof signUpSchema>) {
   redirect(`/verify-email`);
 }
 
+export async function signUpWithGoogleAction() {
+  const res = await auth.api.signInSocial({
+    body: {
+      provider: "google",
+    },
+  });
+
+  if ("user" in res && res.user.emailVerified) {
+    redirect("/dashboard");
+  }
+  redirect("/verify-email");
+}
+
 export async function loginAction(credentials: z.infer<typeof loginSchema>) {
   const result = loginSchema.safeParse(credentials);
   if (!result.success) {

@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Rent Jedi - Rent. Get Paid.",
+  title: "Bloom Rent - Rent. Get Paid.",
   description:
     "A ridiculously simple rental management platform for landlords and real state pals",
 };
