@@ -1,12 +1,12 @@
 import { account, session, user, verification } from "@/db/schema/auth-schema";
 
-import { db } from "@/db/drizzle";
 import type { User } from "better-auth";
 import { betterAuth } from "better-auth";
+import { db } from "@/db/drizzle";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
-import { twoFactor } from "better-auth/plugins";
 import { redirect } from "next/navigation";
+import { twoFactor } from "better-auth/plugins";
 
 type SendResetPasswordPayload = { user: User; url: string; token: string };
 type OnPasswordResetPayload = { user: User };
@@ -17,6 +17,7 @@ const apiSendUrl =
 
 export const auth = betterAuth({
   appName: "Rent Jedi",
+  trustedOrigins: ["http://localhost:3000", "https://rentjedi.com"],
   plugins: [twoFactor(), nextCookies()],
   emailVerification: {
     autoSignInAfterVerification: true,
