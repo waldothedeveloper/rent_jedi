@@ -5,6 +5,7 @@ import { betterAuth } from "better-auth";
 import { db } from "@/db/drizzle";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
+import { property } from "@/db/schema/properties-schema";
 import { redirect } from "next/navigation";
 import { twoFactor } from "better-auth/plugins";
 
@@ -13,11 +14,11 @@ type OnPasswordResetPayload = { user: User };
 const apiSendUrl =
   process.env.NODE_ENV === "development"
     ? "http://localhost:3000/api/send"
-    : "https://rentjedi.com/api/send";
+    : `${process.env.PRODUCTION_URL}/api/send`;
 
 export const auth = betterAuth({
   appName: "Bloom Rent",
-  trustedOrigins: ["http://localhost:3000", "https://rentjedi.com"],
+  trustedOrigins: ["http://localhost:3000", process.env.PRODUCTION_URL!],
   socialProviders: {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID as string,
@@ -45,7 +46,6 @@ export const auth = betterAuth({
       });
     },
     async afterEmailVerification(user, request) {
-      // redirect to dashboard after email verification
       redirect("/dashboard");
     },
   },
@@ -99,6 +99,8 @@ export const auth = betterAuth({
       session,
       account,
       verification,
+      twoFactor,
+      property,
     },
   }),
 });

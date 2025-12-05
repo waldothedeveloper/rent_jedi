@@ -1,6 +1,6 @@
 {
-  "id": "51e16bc9-275b-45aa-9531-9573add25af1",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "89c45130-5688-4189-9c90-cf17fddffb69",
+  "prevId": "51e16bc9-275b-45aa-9531-9573add25af1",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -657,11 +657,11 @@
       "checkConstraints": {
         "contact_email_valid": {
           "name": "contact_email_valid",
-          "value": "\"property\".\"contact_email\" IS NULL OR \"property\".\"contact_email\" ~ $1"
+          "value": "\"property\".\"contact_email\" IS NULL OR \"property\".\"contact_email\" ~ '^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$'"
         },
         "contact_phone_e164": {
           "name": "contact_phone_e164",
-          "value": "\"property\".\"contact_phone\" IS NULL OR \"property\".\"contact_phone\" ~ $1"
+          "value": "\"property\".\"contact_phone\" IS NULL OR \"property\".\"contact_phone\" ~ '^\\+[1-9]\\d{1,14}$'"
         },
         "year_built_range": {
           "name": "year_built_range",
