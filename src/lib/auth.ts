@@ -24,7 +24,7 @@ const apiSendUrl =
 
 export const auth = betterAuth({
   appName: "Bloom Rent",
-  trustedOrigins: ["http://localhost:3000", process.env.PRODUCTION_URL!],
+  // trustedOrigins: ["http://localhost:3000", process.env.PRODUCTION_URL!],
   socialProviders: {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID as string,
