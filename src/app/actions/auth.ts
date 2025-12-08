@@ -14,6 +14,23 @@ import { z } from "zod";
 
 type HeadersLike = Pick<Headers, "get"> | null | undefined;
 
+type LoginError = {
+  status: string;
+  body: { code: string; message: string };
+  headers: {};
+  statusCode: number;
+  name: string;
+};
+
+function isLoginError(e: unknown): e is LoginError {
+  return (
+    typeof e === "object" &&
+    e !== null &&
+    "body" in e &&
+    typeof (e as any).body?.code === "string"
+  );
+}
+
 function getBaseUrl(headersList?: HeadersLike) {
   const envUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL;
   const origin = headersList?.get("origin");
@@ -29,11 +46,9 @@ function getBaseUrl(headersList?: HeadersLike) {
 }
 
 export async function getSessionOrRedirect() {
-  const sessionResponse = await auth.api.getSession({
+  const session = await auth.api.getSession({
     headers: await headers(),
   });
-
-  const session = sessionResponse;
 
   if (!session) {
     redirect("/login");
@@ -104,21 +119,44 @@ export async function signUpWithGoogleAction() {
   redirect("/verify-email");
 }
 
-export async function loginAction(credentials: z.infer<typeof loginSchema>) {
-  const result = loginSchema.safeParse(credentials);
-  if (!result.success) {
-    return result.error;
+export async function loginAction(credentials: unknown) {
+  const parsed = loginSchema.safeParse(credentials);
+
+  if (!parsed.success) {
+    return {
+      success: false as const,
+      message: "Invalid email or password format.",
+    };
   }
-  const { email, password } = result.data;
 
-  await auth.api.signInEmail({
-    body: {
-      email,
-      password,
-    },
-  });
+  try {
+    await auth.api.signInEmail({
+      body: parsed.data,
+    });
 
-  redirect("/dashboard");
+    return { success: true as const, redirectTo: "/dashboard" };
+  } catch (error: unknown) {
+    if (isLoginError(error)) {
+      if (error.body.code === "EMAIL_NOT_VERIFIED") {
+        return {
+          success: false as const,
+          message: "Please verify your email before accessing your account.",
+        };
+      }
+
+      return {
+        success: false as const,
+        message:
+          error?.body?.message || "Invalid credentials. Please try again.",
+      };
+    }
+
+    console.error("loginAction failed", error);
+    return {
+      success: false as const,
+      message: "Something went wrong. Please try again.",
+    };
+  }
 }
 
 export async function requestPasswordResetAction(
@@ -166,5 +204,45 @@ export async function logoutAction() {
   await auth.api.signOut({
     headers: await headers(),
   });
-  redirect("/");
+  redirect("/login");
+}
+
+export async function enableTwoFactorAction({
+  password,
+}: {
+  password: string;
+}) {
+  console.log("password on enableTwoFactorAction: ", password);
+  try {
+    const result = await auth.api.enableTwoFactor({
+      body: {
+        password,
+      },
+
+      headers: await headers(),
+    });
+    console.log(`result`, result);
+
+    return {
+      success: true,
+      message: "Two-factor authentication enabled successfully.",
+      // data: {
+      //   backupCodes,
+      //   totpURI,
+      // },
+    };
+  } catch (error) {
+    console.log("error on enableTwoFactorAction: ", JSON.stringify(error));
+    if (isLoginError(error)) {
+      return {
+        success: false as const,
+        message: error?.body?.message,
+      };
+    }
+
+    return {
+      success: false as const,
+      message: "Something went wrong. Please try again or contact support",
+    };
+  }
 }

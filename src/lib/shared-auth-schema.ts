@@ -50,3 +50,7 @@ export const resetPasswordSchema = z
     path: ["confirmPassword"],
     message: "Passwords must match.",
   });
+
+export const twoFactorSchema = z.object({
+  password: signUpPasswordSchema,
+});

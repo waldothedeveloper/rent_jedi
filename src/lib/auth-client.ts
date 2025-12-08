@@ -5,6 +5,6 @@ export const authClient = createAuthClient({
   plugins: [twoFactorClient()],
   baseURL:
     process.env.NODE_ENV === "production"
-      ? "https://rentjedi.com"
+      ? process.env.PRODUCTION_URL
       : "http://localhost:3000",
 });
