@@ -34,10 +34,10 @@ const apiSendUrl =
 export const auth = betterAuth({
   appName: "Bloom Rent",
   baseURL,
-  trustedOrigins: [
-    "http://localhost:3000",
-    `https://${process.env.VERCEL_URL!}`,
-  ],
+  // trustedOrigins: [
+  //   "http://localhost:3000",
+  //   `https://${process.env.VERCEL_URL!}`,
+  // ],
   socialProviders: {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID as string,
