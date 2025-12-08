@@ -16,6 +16,7 @@ import {
   FieldSeparator,
 } from "@/components/ui/field";
 import { revalidateLogic, useForm } from "@tanstack/react-form";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,7 @@ export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
+  const router = useRouter();
   const form = useForm({
     defaultValues: {
       email: "",
@@ -44,14 +46,16 @@ export function LoginForm({
       onDynamic: loginSchema,
     },
     onSubmit: async ({ value, formApi }) => {
-      try {
-        await loginAction(value);
-        formApi.reset();
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "Something went wrong";
-        toast.error(message);
+      const res = await loginAction(value);
+
+      if (!res?.success) {
+        return toast.error(res?.message ?? "Login failed. Try again.");
       }
+
+      toast.success("Welcome back!");
+      router.push(res.redirectTo ?? "/dashboard");
+      router.refresh();
+      formApi.reset();
     },
   });
 

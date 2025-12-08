@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     })();
 
     const { data, error } = await resend.emails.send({
-      from: "Bloom Rent <contact@rentjedi.com>",
+      from: "Bloom Rent <contact@bloomrent.com>",
       to: [to],
       subject,
       react: reactTemplate,

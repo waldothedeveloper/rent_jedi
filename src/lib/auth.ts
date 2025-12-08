@@ -1,4 +1,10 @@
-import { account, session, user, verification } from "@/db/schema/auth-schema";
+import {
+  account,
+  session,
+  twoFactor as twoFactorTable,
+  user,
+  verification,
+} from "@/db/schema/auth-schema";
 
 import type { User } from "better-auth";
 import { betterAuth } from "better-auth";
@@ -7,7 +13,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import { property } from "@/db/schema/properties-schema";
 import { redirect } from "next/navigation";
-import { twoFactor } from "better-auth/plugins";
+import { twoFactor as twoFactorPlugin } from "better-auth/plugins";
 
 type SendResetPasswordPayload = { user: User; url: string; token: string };
 type OnPasswordResetPayload = { user: User };
@@ -25,10 +31,10 @@ export const auth = betterAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
     },
   },
-  plugins: [twoFactor(), nextCookies()],
+  plugins: [twoFactorPlugin(), nextCookies()],
   emailVerification: {
     autoSignInAfterVerification: true,
-    sendOnSignIn: true,
+    // sendOnSignIn: true,
     sendOnSignUp: true,
     sendVerificationEmail: async ({ user, url, token: _token }, _request) => {
       await fetch(apiSendUrl, {
@@ -99,7 +105,7 @@ export const auth = betterAuth({
       session,
       account,
       verification,
-      twoFactor,
+      twoFactor: twoFactorTable,
       property,
     },
   }),
