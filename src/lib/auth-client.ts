@@ -5,6 +5,6 @@ export const authClient = createAuthClient({
   plugins: [twoFactorClient()],
   baseURL:
     process.env.NODE_ENV === "production"
-      ? process.env.PRODUCTION_URL
+      ? `https://${process.env.VERCEL_URL!}`
       : "http://localhost:3000",
 });
