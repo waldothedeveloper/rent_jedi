@@ -20,7 +20,7 @@ type OnPasswordResetPayload = { user: User };
 const apiSendUrl =
   process.env.NODE_ENV === "development"
     ? "http://localhost:3000/api/send"
-    : `${process.env.PRODUCTION_URL}/api/send`;
+    : `https://${process.env.VERCEL_URL}/api/send`;
 
 export const auth = betterAuth({
   appName: "Bloom Rent",
