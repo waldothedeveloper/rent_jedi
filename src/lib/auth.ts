@@ -15,6 +15,15 @@ import { property } from "@/db/schema/properties-schema";
 import { redirect } from "next/navigation";
 import { twoFactor as twoFactorPlugin } from "better-auth/plugins";
 
+const baseURL =
+  process.env.VERCEL === "1"
+    ? process.env.VERCEL_ENV === "production"
+      ? process.env.BETTER_AUTH_URL
+      : process.env.VERCELENV === "preview"
+        ? `https://${process.env.VERCEL_ENV}`
+        : undefined
+    : undefined;
+
 type SendResetPasswordPayload = { user: User; url: string; token: string };
 type OnPasswordResetPayload = { user: User };
 const apiSendUrl =
@@ -24,6 +33,7 @@ const apiSendUrl =
 
 export const auth = betterAuth({
   appName: "Bloom Rent",
+  baseURL,
   trustedOrigins: [
     "http://localhost:3000",
     `https://${process.env.VERCEL_URL!}`,
