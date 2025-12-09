@@ -5,6 +5,7 @@ import {
   loginSchema,
   resetPasswordSchema,
   signUpSchema,
+  totpSchema,
 } from "@/lib/shared-auth-schema";
 
 import { auth } from "@/lib/auth";
@@ -130,9 +131,13 @@ export async function loginAction(credentials: unknown) {
   }
 
   try {
-    await auth.api.signInEmail({
+    const response = await auth.api.signInEmail({
       body: parsed.data,
     });
+
+    if ("twoFactorRedirect" in response) {
+      return { success: true, redirectTo: "/login/verify-totp" };
+    }
 
     return { success: true as const, redirectTo: "/dashboard" };
   } catch (error: unknown) {
@@ -155,6 +160,47 @@ export async function loginAction(credentials: unknown) {
     return {
       success: false as const,
       message: "Something went wrong. Please try again.",
+    };
+  }
+}
+
+export async function verifyTotpAction(payload: {
+  pin: string;
+  trustDevice?: boolean;
+}) {
+  const parsed = totpSchema
+    .extend({ trustDevice: z.boolean().optional() })
+    .safeParse(payload);
+
+  if (!parsed.success) {
+    return {
+      success: false as const,
+      message: "Invalid code format. Please enter a 6-digit code.",
+    };
+  }
+
+  try {
+    await auth.api.verifyTOTP({
+      body: {
+        code: parsed.data.pin,
+        trustDevice: parsed.data.trustDevice ?? false,
+      },
+      headers: await headers(),
+    });
+
+    return { success: true as const, redirectTo: "/dashboard" };
+  } catch (error: unknown) {
+    if (isLoginError(error)) {
+      return {
+        success: false as const,
+        message: error?.body?.message ?? "Invalid or expired code.",
+      };
+    }
+
+    console.error("verifyTotpAction failed", error);
+    return {
+      success: false as const,
+      message: "Unable to verify code. Please try again.",
     };
   }
 }
@@ -205,44 +251,4 @@ export async function logoutAction() {
     headers: await headers(),
   });
   redirect("/login");
-}
-
-export async function enableTwoFactorAction({
-  password,
-}: {
-  password: string;
-}) {
-  console.log("password on enableTwoFactorAction: ", password);
-  try {
-    const result = await auth.api.enableTwoFactor({
-      body: {
-        password,
-      },
-
-      headers: await headers(),
-    });
-    console.log(`result`, result);
-
-    return {
-      success: true,
-      message: "Two-factor authentication enabled successfully.",
-      // data: {
-      //   backupCodes,
-      //   totpURI,
-      // },
-    };
-  } catch (error) {
-    console.log("error on enableTwoFactorAction: ", JSON.stringify(error));
-    if (isLoginError(error)) {
-      return {
-        success: false as const,
-        message: error?.body?.message,
-      };
-    }
-
-    return {
-      success: false as const,
-      message: "Something went wrong. Please try again or contact support",
-    };
-  }
 }

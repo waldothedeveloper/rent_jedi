@@ -54,3 +54,10 @@ export const resetPasswordSchema = z
 export const twoFactorSchema = z.object({
   password: signUpPasswordSchema,
 });
+
+export const totpSchema = z.object({
+  pin: z
+    .string()
+    .regex(/^[0-9]{6}$/, "Please enter only numbers and up to 6 digits"),
+  trustDevice: z.boolean(),
+});

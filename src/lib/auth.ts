@@ -33,21 +33,17 @@ const apiSendUrl =
 
 export const auth = betterAuth({
   appName: "Bloom Rent",
-  // baseURL,
-  // trustedOrigins: [
-  //   "http://localhost:3000",
-  //   `https://${process.env.VERCEL_URL!}`,
-  // ],
   socialProviders: {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID as string,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
     },
   },
+  trustedOrigins: ["http://localhost:3000", "https://bloomrent.com"],
   plugins: [twoFactorPlugin(), nextCookies()],
   emailVerification: {
     autoSignInAfterVerification: true,
-    // sendOnSignIn: true,
+    sendOnSignIn: true,
     sendOnSignUp: true,
     sendVerificationEmail: async ({ user, url, token: _token }, _request) => {
       await fetch(apiSendUrl, {
