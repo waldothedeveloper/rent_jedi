@@ -16,7 +16,6 @@ import {
   FieldSeparator,
 } from "@/components/ui/field";
 import { revalidateLogic, useForm } from "@tanstack/react-form";
-import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { loginAction } from "@/app/actions/auth";
 import { loginSchema } from "@/lib/shared-auth-schema";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 export function LoginForm({
   className,
@@ -52,7 +52,6 @@ export function LoginForm({
         return toast.error(res?.message ?? "Login failed. Try again.");
       }
 
-      toast.success("Welcome back!");
       router.push(res.redirectTo ?? "/dashboard");
       router.refresh();
       formApi.reset();
