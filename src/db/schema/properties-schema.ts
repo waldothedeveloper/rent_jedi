@@ -1,3 +1,4 @@
+import { EMAILREGEX, PHONEREGEX } from "@/lib/utils";
 import {
   check,
   index,
@@ -12,9 +13,6 @@ import {
 import { relations, sql } from "drizzle-orm";
 
 import { user } from "./auth-schema";
-
-const PHONEREGEX = "^\\+[1-9]\\d{1,14}$";
-const EMAILREGEX = "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$";
 
 export const propertyStatusEnum = pgEnum("property_status", [
   "draft",
