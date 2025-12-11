@@ -1898,3 +1898,31 @@
 [2025-12-11T03:22:54.922Z]   Relative path: /package.json.git
 [2025-12-11T03:22:54.922Z]   Path parts (1): ["package.json.git"]
 [2025-12-11T03:22:54.922Z]   EXCLUDED: not deep enough (1 < 3)
+[2025-12-11T03:23:07.308Z] File change detected: /Users/waldothedeveloper/dev/rent_jedi/.git/COMMIT_EDITMSG
+[2025-12-11T03:23:07.309Z]   Relative path: /.git/COMMIT_EDITMSG
+[2025-12-11T03:23:07.309Z]   Path parts (2): [".git","COMMIT_EDITMSG"]
+[2025-12-11T03:23:07.309Z]   EXCLUDED: not deep enough (2 < 3)
+[2025-12-11T03:23:08.416Z] File change detected: /Users/waldothedeveloper/dev/rent_jedi/package.json.git
+[2025-12-11T03:23:08.416Z]   Relative path: /package.json.git
+[2025-12-11T03:23:08.416Z]   Path parts (1): ["package.json.git"]
+[2025-12-11T03:23:08.416Z]   EXCLUDED: not deep enough (1 < 3)
+[2025-12-11T03:23:08.416Z] File change detected: /Users/waldothedeveloper/dev/rent_jedi/.git/COMMIT_EDITMSG.git
+[2025-12-11T03:23:08.417Z]   Relative path: /.git/COMMIT_EDITMSG.git
+[2025-12-11T03:23:08.417Z]   Path parts (2): [".git","COMMIT_EDITMSG.git"]
+[2025-12-11T03:23:08.417Z]   EXCLUDED: not deep enough (2 < 3)
+[2025-12-11T03:23:15.755Z] File change detected: /Users/waldothedeveloper/dev/rent_jedi/.git/COMMIT_EDITMSG
+[2025-12-11T03:23:15.755Z]   Relative path: /.git/COMMIT_EDITMSG
+[2025-12-11T03:23:15.755Z]   Path parts (2): [".git","COMMIT_EDITMSG"]
+[2025-12-11T03:23:15.755Z]   EXCLUDED: not deep enough (2 < 3)
+[2025-12-11T03:23:15.755Z] File change detected: /Users/waldothedeveloper/dev/rent_jedi/.git/logs/HEAD
+[2025-12-11T03:23:15.755Z]   Relative path: /.git/logs/HEAD
+[2025-12-11T03:23:15.755Z]   Path parts (3): [".git","logs","HEAD"]
+[2025-12-11T03:23:15.755Z]   Instance folder: /Users/waldothedeveloper/dev/rent_jedi/.git
+[2025-12-11T03:23:15.756Z]   Settings check: _settings.json=false, settings.json=false
+[2025-12-11T03:23:15.756Z]   EXCLUDED: no settings file in instance folder
+[2025-12-11T03:23:15.756Z] File change detected: /Users/waldothedeveloper/dev/rent_jedi/.git/logs/refs/heads/main
+[2025-12-11T03:23:15.756Z]   Relative path: /.git/logs/refs/heads/main
+[2025-12-11T03:23:15.756Z]   Path parts (5): [".git","logs","refs","heads","main"]
+[2025-12-11T03:23:15.756Z]   Instance folder: /Users/waldothedeveloper/dev/rent_jedi/.git
+[2025-12-11T03:23:15.756Z]   Settings check: _settings.json=false, settings.json=false
+[2025-12-11T03:23:15.756Z]   EXCLUDED: no settings file in instance folder
