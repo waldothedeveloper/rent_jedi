@@ -1894,3 +1894,7 @@
 [2025-12-11T03:22:33.430Z]   EXCLUDED: not deep enough (1 < 3)
 [2025-12-11T03:22:33.709Z] setupWatcher called: debounceSeconds=30, workspace=/Users/waldothedeveloper/dev/rent_jedi
 [2025-12-11T03:22:33.712Z] Watcher created for: /Users/waldothedeveloper/dev/rent_jedi
+[2025-12-11T03:22:54.921Z] File change detected: /Users/waldothedeveloper/dev/rent_jedi/package.json.git
+[2025-12-11T03:22:54.922Z]   Relative path: /package.json.git
+[2025-12-11T03:22:54.922Z]   Path parts (1): ["package.json.git"]
+[2025-12-11T03:22:54.922Z]   EXCLUDED: not deep enough (1 < 3)
