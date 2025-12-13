@@ -5,6 +5,7 @@ import {
   user,
   verification,
 } from "@/db/schema/auth-schema";
+import { admin, twoFactor as twoFactorPlugin } from "better-auth/plugins";
 
 import type { User } from "better-auth";
 import { betterAuth } from "better-auth";
@@ -13,7 +14,6 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import { property } from "@/db/schema/properties-schema";
 import { redirect } from "next/navigation";
-import { twoFactor as twoFactorPlugin } from "better-auth/plugins";
 
 // const baseURL =
 //   process.env.VERCEL === "1"
@@ -41,7 +41,7 @@ export const auth = betterAuth({
     },
   },
   trustedOrigins: ["http://localhost:3000", "https://bloomrent.com"],
-  plugins: [twoFactorPlugin(), nextCookies()],
+  plugins: [twoFactorPlugin(), admin(), nextCookies()],
   emailVerification: {
     autoSignInAfterVerification: true,
     sendOnSignIn: true,
