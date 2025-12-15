@@ -57,16 +57,18 @@ export function ResetPasswordForm({
       onDynamic: resetPasswordSchema,
     },
     onSubmit: async ({ value, formApi }) => {
-      try {
-        await resetPasswordAction(value);
-        toast.success("Password updated. You can now sign in.");
-        formApi.reset();
-        router.push("/login");
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "Something went wrong";
-        toast.error(message);
+      const result = await resetPasswordAction(value);
+
+      if (!result?.success) {
+        return toast.error(
+          result?.message ??
+            "Unable to reset password. Request a new link and try again."
+        );
       }
+
+      toast.success("Password updated. You can now sign in.");
+      formApi.reset();
+      router.push("/login");
     },
   });
 
@@ -77,109 +79,113 @@ export function ResetPasswordForm({
           <CardTitle className="text-xl">Set a new password</CardTitle>
           <CardDescription>
             {hasTokenIssue
-              ? error ||
-                "Your reset link is missing, invalid, or expired. Request a new one to continue."
+              ? error || "Your reset link is missing, invalid, or expired."
               : "Choose a strong password to secure your account."}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {hasTokenIssue ? (
-            <FieldDescription className="mb-4 text-center">
-              {error ? `${error} ` : null}
-              <Link href="/forgot-password">Request a new reset link</Link> to
-              continue.
-            </FieldDescription>
-          ) : null}
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              form.handleSubmit();
-            }}
-          >
-            <input
-              type="text"
-              name="username"
-              autoComplete="username"
-              hidden
-              value={usernameHint ?? ""}
-              readOnly
-            />
-            <FieldGroup>
-              <form.Field
-                name="newPassword"
-                children={(field) => (
-                  <Field>
-                    <FieldLabel htmlFor={field.name}>New password</FieldLabel>
-                    <Input
-                      autoComplete="new-password"
-                      id={field.name}
-                      type="password"
-                      value={field.state.value ?? ""}
-                      onBlur={field.handleBlur}
-                      onChange={(event) =>
-                        field.handleChange(event.target.value)
-                      }
-                      disabled={hasTokenIssue}
-                    />
-                    <FieldError errors={field.state.meta.errors} />
-                  </Field>
-                )}
+            <div className="space-y-4 text-center">
+              <FieldDescription>
+                <Link href="/forgot-password">Request a new reset link</Link> to
+                continue.
+              </FieldDescription>
+              <FieldDescription>
+                Remembered it? <Link href="/login">Return to login</Link>
+              </FieldDescription>
+            </div>
+          ) : (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                form.handleSubmit();
+              }}
+            >
+              <input
+                type="text"
+                name="username"
+                autoComplete="username"
+                hidden
+                value={usernameHint ?? ""}
+                readOnly
               />
-              <form.Field
-                name="confirmPassword"
-                children={(field) => (
-                  <Field>
-                    <FieldLabel htmlFor={field.name}>
-                      Confirm new password
-                    </FieldLabel>
-                    <Input
-                      autoComplete="new-password"
-                      id={field.name}
-                      type="password"
-                      value={field.state.value ?? ""}
-                      onBlur={field.handleBlur}
-                      onChange={(event) =>
-                        field.handleChange(event.target.value)
-                      }
-                      disabled={hasTokenIssue}
-                    />
-                    <FieldError errors={field.state.meta.errors} />
-                  </Field>
-                )}
-              />
-
-              <Field>
-                <form.Subscribe
-                  selector={(state) => [
-                    state.canSubmit,
-                    state.isSubmitting,
-                    state.isPristine,
-                  ]}
-                  children={([canSubmit, isSubmitting, isPristine]) => (
-                    <Button
-                      type="submit"
-                      className="w-full"
-                      disabled={
-                        hasTokenIssue ||
-                        !canSubmit ||
-                        isSubmitting ||
-                        isPristine
-                      }
-                    >
-                      {isSubmitting
-                        ? "Updating password..."
-                        : "Update password"}
-                    </Button>
+              <FieldGroup>
+                <form.Field
+                  name="newPassword"
+                  children={(field) => (
+                    <Field>
+                      <FieldLabel htmlFor={field.name}>New password</FieldLabel>
+                      <Input
+                        autoComplete="new-password"
+                        id={field.name}
+                        type="password"
+                        value={field.state.value ?? ""}
+                        onBlur={field.handleBlur}
+                        onChange={(event) =>
+                          field.handleChange(event.target.value)
+                        }
+                        disabled={hasTokenIssue}
+                      />
+                      <FieldError errors={field.state.meta.errors} />
+                    </Field>
+                  )}
+                />
+                <form.Field
+                  name="confirmPassword"
+                  children={(field) => (
+                    <Field>
+                      <FieldLabel htmlFor={field.name}>
+                        Confirm new password
+                      </FieldLabel>
+                      <Input
+                        autoComplete="new-password"
+                        id={field.name}
+                        type="password"
+                        value={field.state.value ?? ""}
+                        onBlur={field.handleBlur}
+                        onChange={(event) =>
+                          field.handleChange(event.target.value)
+                        }
+                        disabled={hasTokenIssue}
+                      />
+                      <FieldError errors={field.state.meta.errors} />
+                    </Field>
                   )}
                 />
 
-                <FieldDescription className="text-center">
-                  Remembered it? <Link href="/login">Return to login</Link>
-                </FieldDescription>
-              </Field>
-            </FieldGroup>
-          </form>
+                <Field>
+                  <form.Subscribe
+                    selector={(state) => [
+                      state.canSubmit,
+                      state.isSubmitting,
+                      state.isPristine,
+                    ]}
+                    children={([canSubmit, isSubmitting, isPristine]) => (
+                      <Button
+                        type="submit"
+                        className="w-full"
+                        disabled={
+                          hasTokenIssue ||
+                          !canSubmit ||
+                          isSubmitting ||
+                          isPristine
+                        }
+                      >
+                        {isSubmitting
+                          ? "Updating password..."
+                          : "Update password"}
+                      </Button>
+                    )}
+                  />
+
+                  <FieldDescription className="text-center">
+                    Remembered it? <Link href="/login">Return to login</Link>
+                  </FieldDescription>
+                </Field>
+              </FieldGroup>
+            </form>
+          )}
         </CardContent>
       </Card>
     </div>

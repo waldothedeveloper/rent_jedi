@@ -156,7 +156,7 @@ export async function loginAction(credentials: unknown) {
       };
     }
 
-    console.error("loginAction failed", error);
+    // console.error("loginAction failed", error);
     return {
       success: false as const,
       message: "Something went wrong. Please try again.",
@@ -197,7 +197,7 @@ export async function verifyTotpAction(payload: {
       };
     }
 
-    console.error("verifyTotpAction failed", error);
+    // console.error("verifyTotpAction failed", error);
     return {
       success: false as const,
       message: "Unable to verify code. Please try again.",
@@ -205,6 +205,7 @@ export async function verifyTotpAction(payload: {
   }
 }
 
+// this is when users forget their password
 export async function requestPasswordResetAction(
   payload: z.infer<typeof forgotPasswordSchema>
 ) {
@@ -233,17 +234,38 @@ export async function resetPasswordAction(
   const parsed = resetPasswordSchema.safeParse(payload);
 
   if (!parsed.success) {
-    return parsed.error;
+    return {
+      success: false as const,
+      message: "Invalid reset request. Please try again.",
+    };
   }
 
-  await auth.api.resetPassword({
-    body: {
-      newPassword: parsed.data.newPassword,
-      token: parsed.data.token,
-    },
-  });
+  try {
+    await auth.api.resetPassword({
+      body: {
+        newPassword: parsed.data.newPassword,
+        token: parsed.data.token,
+      },
+    });
 
-  return { success: true } as const;
+    return { success: true } as const;
+  } catch (error: unknown) {
+    // console.error("resetPasswordAction failed", JSON.stringify(error));
+    if (isLoginError(error)) {
+      return {
+        success: false as const,
+        message:
+          error?.body?.message ??
+          "Your reset link is invalid or expired. Request a new one to continue.",
+      };
+    }
+
+    return {
+      success: false as const,
+      message:
+        "Something wrong happened when trying to reset your password. Contact support or try again.",
+    };
+  }
 }
 
 export async function logoutAction() {
