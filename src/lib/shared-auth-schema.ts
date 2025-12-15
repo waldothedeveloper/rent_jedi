@@ -50,3 +50,14 @@ export const resetPasswordSchema = z
     path: ["confirmPassword"],
     message: "Passwords must match.",
   });
+
+export const twoFactorSchema = z.object({
+  password: signUpPasswordSchema,
+});
+
+export const totpSchema = z.object({
+  pin: z
+    .string()
+    .regex(/^[0-9]{6}$/, "Please enter only numbers and up to 6 digits"),
+  trustDevice: z.boolean(),
+});

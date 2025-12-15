@@ -1,23 +1,62 @@
-import { account, session, user, verification } from "@/db/schema/auth-schema";
+import { accessControl, admin, landlord, tenant } from "@/lib/permissions";
+import {
+  account,
+  session,
+  twoFactor as twoFactorTable,
+  user,
+  verification,
+} from "@/db/schema/auth-schema";
+import {
+  admin as adminPlugin,
+  twoFactor as twoFactorPlugin,
+} from "better-auth/plugins";
 
-import { db } from "@/db/drizzle";
 import type { User } from "better-auth";
 import { betterAuth } from "better-auth";
+import { db } from "@/db/drizzle";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
-import { twoFactor } from "better-auth/plugins";
+import { property } from "@/db/schema/properties-schema";
 import { redirect } from "next/navigation";
+
+// const baseURL =
+//   process.env.VERCEL === "1"
+//     ? process.env.VERCEL_ENV === "production"
+//       ? process.env.BETTER_AUTH_URL
+//       : process.env.VERCELENV === "preview"
+//         ? `https://${process.env.VERCEL_ENV}`
+//         : undefined
+//     : undefined;
 
 type SendResetPasswordPayload = { user: User; url: string; token: string };
 type OnPasswordResetPayload = { user: User };
 const apiSendUrl =
   process.env.NODE_ENV === "development"
     ? "http://localhost:3000/api/send"
-    : "https://rentjedi.com/api/send";
+    : `https://${process.env.VERCEL_URL}/api/send`;
 
 export const auth = betterAuth({
-  appName: "Rent Jedi",
-  plugins: [twoFactor(), nextCookies()],
+  appName: "Bloom Rent",
+  socialProviders: {
+    google: {
+      prompt: "select_account",
+      clientId: process.env.GOOGLE_CLIENT_ID as string,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+    },
+  },
+  trustedOrigins: ["http://localhost:3000", "https://bloomrent.com"],
+  plugins: [
+    twoFactorPlugin(),
+    adminPlugin({
+      accessControl,
+      roles: {
+        admin,
+        landlord,
+        tenant,
+      },
+    }),
+    nextCookies(),
+  ],
   emailVerification: {
     autoSignInAfterVerification: true,
     sendOnSignIn: true,
@@ -28,7 +67,7 @@ export const auth = betterAuth({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           to: user.email,
-          subject: "Verify your Rent Jedi email",
+          subject: "Verify your Bloom Rent email",
           firstName: user.name,
           verificationUrl: url,
           template: "email-verification",
@@ -38,7 +77,6 @@ export const auth = betterAuth({
       });
     },
     async afterEmailVerification(user, request) {
-      // redirect to dashboard after email verification
       redirect("/dashboard");
     },
   },
@@ -57,7 +95,7 @@ export const auth = betterAuth({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           to: user.email,
-          subject: "Reset your Rent Jedi password",
+          subject: "Reset your Bloom Rent password",
           firstName: user.name,
           resetUrl: url,
           template: "reset",
@@ -72,7 +110,7 @@ export const auth = betterAuth({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           to: user.email,
-          subject: "Your Rent Jedi password was reset",
+          subject: "Your Bloom Rent password was reset",
           firstName: user.name,
           template: "reset-confirmation",
         }),
@@ -92,6 +130,8 @@ export const auth = betterAuth({
       session,
       account,
       verification,
+      twoFactor: twoFactorTable,
+      property,
     },
   }),
 });

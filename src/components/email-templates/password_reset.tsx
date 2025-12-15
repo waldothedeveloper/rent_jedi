@@ -43,20 +43,20 @@ export const PasswordReset = ({
         }}
       >
         <Body className="bg-[#f6f9fc] py-2.5">
-          <Preview>Rent Jedi. Reset your password</Preview>
+          <Preview>Bloom Rent. Reset your password</Preview>
           <Container className="bg-white border border-solid border-[#f0f0f0] p-[45px]">
             <Img
               src={`${baseUrl}/images/rj_logo.svg`}
               width="40"
               height="33"
-              alt="Rent Jedi Logo"
+              alt="Bloom Rent Logo"
             />
             <Section>
               <Text className="text-base font-dropbox font-light text-[#404040] leading-[26px]">
                 Hi {firstName},
               </Text>
               <Text className="text-base font-dropbox font-light text-[#404040] leading-[26px]">
-                Someone recently requested a password change for your Rent Jedi
+                Someone recently requested a password change for your Bloom Rent
                 account. If this was you, you can set a new password here:
               </Text>
               <Button
@@ -80,7 +80,7 @@ export const PasswordReset = ({
                 Stay secure,
               </Text>
               <Text className="text-base font-dropbox font-light text-[#404040] leading-[26px]">
-                The Rent Jedi Team
+                The Bloom Rent Team
               </Text>
             </Section>
           </Container>

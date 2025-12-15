@@ -1,19 +1,43 @@
 "use client";
 
+import { useActionState, useEffect, useRef, useState } from "react";
+
 import { Button } from "@/components/ui/button";
 import { resendVerificationEmailAction } from "../actions/auth";
-import { useActionState } from "react";
 
 const initialState = {
   success: false,
   message: "",
 };
 
-export const EmailForm = ({ email }: { email: string }) => {
+export const EmailForm = () => {
+  const [timeToNextResend, setTimeToNextResend] = useState(30);
+  const interval = useRef<NodeJS.Timeout>(undefined);
   const [state, formAction, pending] = useActionState(
     resendVerificationEmailAction,
     initialState
   );
+
+  useEffect(() => {
+    startEmailVerificationCountdown();
+  }, []);
+
+  function startEmailVerificationCountdown(time = 30) {
+    setTimeToNextResend(time);
+
+    clearInterval(interval.current);
+    interval.current = setInterval(() => {
+      setTimeToNextResend((t) => {
+        const newT = t - 1;
+
+        if (newT <= 0) {
+          clearInterval(interval.current);
+          return 0;
+        }
+        return newT;
+      });
+    }, 1000);
+  }
 
   return (
     <form
@@ -21,9 +45,15 @@ export const EmailForm = ({ email }: { email: string }) => {
       className="flex flex-col gap-6 items-center justify-center"
     >
       <p>Still can&apos;t find the email?</p>
-      <input type="text" hidden name="email" value={email ?? ""} readOnly />
-      <Button disabled={pending} variant="outline" type="submit">
-        {pending ? "Resending email..." : "Resend Verification Email"}
+
+      <Button
+        disabled={pending || timeToNextResend > 0}
+        variant="outline"
+        type="submit"
+      >
+        {timeToNextResend > 0
+          ? `Resend Verification Email in ${timeToNextResend}s`
+          : "Resend Verification Email"}
       </Button>
       <p className={state.success ? "text-chart-2" : "text-destructive"}>
         {state.message}

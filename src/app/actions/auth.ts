@@ -5,6 +5,7 @@ import {
   loginSchema,
   resetPasswordSchema,
   signUpSchema,
+  totpSchema,
 } from "@/lib/shared-auth-schema";
 
 import { auth } from "@/lib/auth";
@@ -13,6 +14,23 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 type HeadersLike = Pick<Headers, "get"> | null | undefined;
+
+type LoginError = {
+  status: string;
+  body: { code: string; message: string };
+  headers: {};
+  statusCode: number;
+  name: string;
+};
+
+function isLoginError(e: unknown): e is LoginError {
+  return (
+    typeof e === "object" &&
+    e !== null &&
+    "body" in e &&
+    typeof (e as any).body?.code === "string"
+  );
+}
 
 function getBaseUrl(headersList?: HeadersLike) {
   const envUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL;
@@ -29,11 +47,9 @@ function getBaseUrl(headersList?: HeadersLike) {
 }
 
 export async function getSessionOrRedirect() {
-  const sessionResponse = await auth.api.getSession({
+  const session = await auth.api.getSession({
     headers: await headers(),
   });
-
-  const session = sessionResponse;
 
   if (!session) {
     redirect("/login");
@@ -91,21 +107,102 @@ export async function signUpAction(credentials: z.infer<typeof signUpSchema>) {
   redirect(`/verify-email`);
 }
 
-export async function loginAction(credentials: z.infer<typeof loginSchema>) {
-  const result = loginSchema.safeParse(credentials);
-  if (!result.success) {
-    return result.error;
-  }
-  const { email, password } = result.data;
-
-  await auth.api.signInEmail({
+export async function signUpWithGoogleAction() {
+  const res = await auth.api.signInSocial({
     body: {
-      email,
-      password,
+      provider: "google",
     },
   });
 
-  redirect("/dashboard");
+  if ("user" in res && res.user.emailVerified) {
+    redirect("/dashboard");
+  }
+  redirect("/verify-email");
+}
+
+export async function loginAction(credentials: unknown) {
+  const parsed = loginSchema.safeParse(credentials);
+
+  if (!parsed.success) {
+    return {
+      success: false as const,
+      message: "Invalid email or password format.",
+    };
+  }
+
+  try {
+    const response = await auth.api.signInEmail({
+      body: parsed.data,
+    });
+
+    if ("twoFactorRedirect" in response) {
+      return { success: true, redirectTo: "/login/verify-totp" };
+    }
+
+    return { success: true as const, redirectTo: "/dashboard" };
+  } catch (error: unknown) {
+    if (isLoginError(error)) {
+      if (error.body.code === "EMAIL_NOT_VERIFIED") {
+        return {
+          success: false as const,
+          message: "Please verify your email before accessing your account.",
+        };
+      }
+
+      return {
+        success: false as const,
+        message:
+          error?.body?.message || "Invalid credentials. Please try again.",
+      };
+    }
+
+    console.error("loginAction failed", error);
+    return {
+      success: false as const,
+      message: "Something went wrong. Please try again.",
+    };
+  }
+}
+
+export async function verifyTotpAction(payload: {
+  pin: string;
+  trustDevice?: boolean;
+}) {
+  const parsed = totpSchema
+    .extend({ trustDevice: z.boolean().optional() })
+    .safeParse(payload);
+
+  if (!parsed.success) {
+    return {
+      success: false as const,
+      message: "Invalid code format. Please enter a 6-digit code.",
+    };
+  }
+
+  try {
+    await auth.api.verifyTOTP({
+      body: {
+        code: parsed.data.pin,
+        trustDevice: parsed.data.trustDevice ?? false,
+      },
+      headers: await headers(),
+    });
+
+    return { success: true as const, redirectTo: "/dashboard" };
+  } catch (error: unknown) {
+    if (isLoginError(error)) {
+      return {
+        success: false as const,
+        message: error?.body?.message ?? "Invalid or expired code.",
+      };
+    }
+
+    console.error("verifyTotpAction failed", error);
+    return {
+      success: false as const,
+      message: "Unable to verify code. Please try again.",
+    };
+  }
 }
 
 export async function requestPasswordResetAction(
@@ -153,5 +250,5 @@ export async function logoutAction() {
   await auth.api.signOut({
     headers: await headers(),
   });
-  redirect("/");
+  redirect("/login");
 }

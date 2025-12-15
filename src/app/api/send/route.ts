@@ -8,14 +8,8 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const {
-      to,
-      subject,
-      firstName,
-      resetUrl,
-      verificationUrl,
-      template,
-    } = body;
+    const { to, subject, firstName, resetUrl, verificationUrl, template } =
+      body;
 
     if (!to || !subject || !template) {
       return Response.json(
@@ -60,7 +54,7 @@ export async function POST(request: Request) {
     })();
 
     const { data, error } = await resend.emails.send({
-      from: "Rent Jedi <contact@rentjedi.com>",
+      from: "Bloom Rent <contact@bloomrent.com>",
       to: [to],
       subject,
       react: reactTemplate,
