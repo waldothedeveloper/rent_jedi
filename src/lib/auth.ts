@@ -1,3 +1,4 @@
+import { accessControl, admin, landlord, tenant } from "@/lib/permissions";
 import {
   account,
   session,
@@ -5,7 +6,10 @@ import {
   user,
   verification,
 } from "@/db/schema/auth-schema";
-import { admin, twoFactor as twoFactorPlugin } from "better-auth/plugins";
+import {
+  admin as adminPlugin,
+  twoFactor as twoFactorPlugin,
+} from "better-auth/plugins";
 
 import type { User } from "better-auth";
 import { betterAuth } from "better-auth";
@@ -41,7 +45,18 @@ export const auth = betterAuth({
     },
   },
   trustedOrigins: ["http://localhost:3000", "https://bloomrent.com"],
-  plugins: [twoFactorPlugin(), admin(), nextCookies()],
+  plugins: [
+    twoFactorPlugin(),
+    adminPlugin({
+      accessControl,
+      roles: {
+        admin,
+        landlord,
+        tenant,
+      },
+    }),
+    nextCookies(),
+  ],
   emailVerification: {
     autoSignInAfterVerification: true,
     sendOnSignIn: true,
