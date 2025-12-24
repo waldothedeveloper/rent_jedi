@@ -49,10 +49,7 @@ export default async function DashboardLayout({
             </Breadcrumb>
           </div>
         </header>
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-          {/* Things that happen in the AppSideBar will control what appears here */}
-          {children}
-        </div>
+        {children}
       </SidebarInset>
     </SidebarProvider>
   );

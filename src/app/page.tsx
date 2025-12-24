@@ -30,8 +30,7 @@ export default function Home() {
               </h1>
 
               <p className="text-lg text-muted-foreground max-w-md">
-                Intelligent tools for landlords. Effortless operations. Maximum
-                returns.
+                Intelligent tools. Effortless operations. Maximum returns.
               </p>
             </div>
 

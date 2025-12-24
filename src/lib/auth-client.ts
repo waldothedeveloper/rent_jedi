@@ -1,4 +1,11 @@
-import { accessControl, admin, landlord, tenant } from "@/lib/permissions";
+import {
+  accessControl,
+  admin,
+  manager,
+  owner,
+  tenant,
+  unverifiedUser,
+} from "@/lib/permissions";
 import { adminClient, twoFactorClient } from "better-auth/client/plugins";
 
 import { createAuthClient } from "better-auth/react";
@@ -6,11 +13,13 @@ import { createAuthClient } from "better-auth/react";
 export const authClient = createAuthClient({
   plugins: [
     adminClient({
-      accessControl,
+      ac: accessControl,
       roles: {
         admin,
-        landlord,
+        owner,
         tenant,
+        manager,
+        unverifiedUser,
       },
     }),
     twoFactorClient(),

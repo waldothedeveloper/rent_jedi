@@ -69,7 +69,7 @@ export function InputOTPForm({
 
       toast.success("Code successfully verified!");
       setServerError(null);
-      router.push(response.redirectTo ?? "/dashboard");
+      router.push(response.redirectTo ?? "/owners/dashboard");
       router.refresh();
       formApi.reset();
     },

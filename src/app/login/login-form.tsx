@@ -52,7 +52,7 @@ export function LoginForm({
         return toast.error(res?.message ?? "Login failed. Try again.");
       }
 
-      router.push(res.redirectTo ?? "/dashboard");
+      router.push(res.redirectTo ?? "/owners/dashboard");
       router.refresh();
       formApi.reset();
     },
@@ -81,7 +81,7 @@ export function LoginForm({
                   onClick={async () => {
                     await authClient.signIn.social({
                       provider: "google",
-                      callbackURL: "/dashboard",
+                      callbackURL: "/owners/dashboard",
                     });
                   }}
                 >

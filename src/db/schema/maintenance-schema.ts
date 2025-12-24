@@ -35,12 +35,9 @@ export const maintenanceRequest = pgTable(
     tenantId: uuid("tenant_id").references(() => tenant.id, {
       onDelete: "set null",
     }),
-    createdByLandlordId: text("created_by_landlord_id").references(
-      () => user.id,
-      {
-        onDelete: "restrict",
-      }
-    ),
+    createdByOwnerId: text("created_by_owner_id").references(() => user.id, {
+      onDelete: "restrict",
+    }),
     createdByTenantId: uuid("created_by_tenant_id").references(
       () => tenant.id,
       { onDelete: "restrict" }
@@ -64,7 +61,7 @@ export const maintenanceRequest = pgTable(
     index("maintenance_request_unit_id_idx").on(table.unitId),
     index("maintenance_request_tenant_id_idx").on(table.tenantId),
     index("maintenance_request_created_by_user_id_idx").on(
-      table.createdByLandlordId
+      table.createdByOwnerId
     ),
     index("maintenance_request_created_by_tenant_id_idx").on(
       table.createdByTenantId
@@ -75,7 +72,7 @@ export const maintenanceRequest = pgTable(
     ),
     check(
       "maintenance_request_creator_present",
-      sql`${table.createdByLandlordId} IS NOT NULL OR ${table.createdByTenantId} IS NOT NULL`
+      sql`${table.createdByOwnerId} IS NOT NULL OR ${table.createdByTenantId} IS NOT NULL`
     ),
   ]
 );
@@ -92,7 +89,7 @@ export const maintenanceRequestRelations = relations(
       references: [tenant.id],
     }),
     createdByUser: one(user, {
-      fields: [maintenanceRequest.createdByLandlordId],
+      fields: [maintenanceRequest.createdByOwnerId],
       references: [user.id],
     }),
     createdByTenant: one(tenant, {
