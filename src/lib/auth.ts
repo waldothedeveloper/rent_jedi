@@ -1,4 +1,11 @@
-import { accessControl, admin, landlord, tenant } from "@/lib/permissions";
+import {
+  accessControl,
+  admin,
+  manager,
+  owner,
+  tenant,
+  unverifiedUser,
+} from "@/lib/permissions";
 import {
   account,
   session,
@@ -19,15 +26,6 @@ import { nextCookies } from "better-auth/next-js";
 import { property } from "@/db/schema/properties-schema";
 import { redirect } from "next/navigation";
 
-// const baseURL =
-//   process.env.VERCEL === "1"
-//     ? process.env.VERCEL_ENV === "production"
-//       ? process.env.BETTER_AUTH_URL
-//       : process.env.VERCELENV === "preview"
-//         ? `https://${process.env.VERCEL_ENV}`
-//         : undefined
-//     : undefined;
-
 type SendResetPasswordPayload = { user: User; url: string; token: string };
 type OnPasswordResetPayload = { user: User };
 const apiSendUrl =
@@ -45,14 +43,24 @@ export const auth = betterAuth({
     },
   },
   trustedOrigins: ["http://localhost:3000", "https://bloomrent.com"],
+  logger: {
+    disabled: false,
+    level: "debug",
+    log: (level, message, ...args) => {
+      // Custom logging implementation
+      console.log(`Better auth [${level}] ${message}`, ...args);
+    },
+  },
   plugins: [
     twoFactorPlugin(),
     adminPlugin({
-      accessControl,
+      ac: accessControl,
       roles: {
         admin,
-        landlord,
+        owner,
         tenant,
+        manager,
+        unverifiedUser,
       },
     }),
     nextCookies(),
@@ -77,7 +85,7 @@ export const auth = betterAuth({
       });
     },
     async afterEmailVerification(user, request) {
-      redirect("/dashboard");
+      redirect("/owners/dashboard");
     },
   },
   emailAndPassword: {

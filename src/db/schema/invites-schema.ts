@@ -1,4 +1,3 @@
-import { EMAILREGEX } from "@/lib/utils";
 import {
   check,
   index,
@@ -11,6 +10,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 
+import { EMAILREGEX } from "@/lib/utils";
 import { property } from "./properties-schema";
 import { user } from "./auth-schema";
 
@@ -30,7 +30,7 @@ export const invite = pgTable(
     propertyId: uuid("property_id")
       .notNull()
       .references(() => property.id, { onDelete: "cascade" }),
-    landlordId: text("landlord_id")
+    ownerId: text("owner_id")
       .notNull()
       .references(() => user.id, { onDelete: "restrict" }),
     managerId: text("manager_id").references(() => user.id, {
@@ -52,7 +52,7 @@ export const invite = pgTable(
   },
   (table) => [
     index("invite_property_id_idx").on(table.propertyId),
-    index("invite_landlord_id_idx").on(table.landlordId),
+    index("invite_owner_id_idx").on(table.ownerId),
     index("invite_manager_id_idx").on(table.managerId),
     index("invite_status_idx").on(table.status),
     uniqueIndex("invite_property_email_uid").on(
@@ -71,8 +71,8 @@ export const inviteRelations = relations(invite, ({ one }) => ({
     fields: [invite.propertyId],
     references: [property.id],
   }),
-  landlord: one(user, {
-    fields: [invite.landlordId],
+  owner: one(user, {
+    fields: [invite.ownerId],
     references: [user.id],
   }),
   manager: one(user, {

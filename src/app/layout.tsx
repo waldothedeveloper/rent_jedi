@@ -19,7 +19,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Bloom Rent - Rent. Get Paid.",
   description:
-    "A ridiculously simple rental management platform for landlords and real state pals",
+    "A ridiculously simple rental management platform for owners and real state pals",
 };
 
 export default function RootLayout({

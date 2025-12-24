@@ -53,16 +53,76 @@ export const propertyTypeEnum = pgEnum("property_type", [
   "manufactured_home",
   "cape_cod",
   "mansion",
+  "other",
 ]);
+
+export const usStateEnum = pgEnum("us_state", [
+  "AK",
+  "AL",
+  "AR",
+  "AZ",
+  "CA",
+  "CO",
+  "CT",
+  "DC",
+  "DE",
+  "FL",
+  "GA",
+  "GU",
+  "HI",
+  "IA",
+  "ID",
+  "IL",
+  "IN",
+  "KS",
+  "KY",
+  "LA",
+  "MA",
+  "MD",
+  "ME",
+  "MI",
+  "MN",
+  "MO",
+  "MS",
+  "MT",
+  "NC",
+  "ND",
+  "NE",
+  "NH",
+  "NJ",
+  "NM",
+  "NV",
+  "NY",
+  "OH",
+  "OK",
+  "OR",
+  "PA",
+  "PR",
+  "RI",
+  "SC",
+  "SD",
+  "TN",
+  "TX",
+  "UT",
+  "VA",
+  "VI",
+  "VT",
+  "WA",
+  "WI",
+  "WV",
+  "WY",
+]);
+
+export const unitTypeEnum = pgEnum("unit_type", ["single_unit", "multi_unit"]);
 
 export const property = pgTable(
   "property",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    landlordId: text("landlord_id")
+    ownerId: text("owner_id")
       .notNull()
       .references(() => user.id, { onDelete: "restrict" }),
-    name: text("name").notNull(),
+    name: text("name"),
     description: text("description"),
     propertyStatus: propertyStatusEnum("property_status")
       .notNull()
@@ -75,7 +135,8 @@ export const property = pgTable(
     addressLine1: text("address_line_1").notNull(),
     addressLine2: text("address_line_2"),
     city: text("city").notNull(),
-    state: text("state").notNull(),
+    state: usStateEnum("state").notNull(),
+    unitType: unitTypeEnum("unit_type").notNull().default("single_unit"),
     zipCode: text("zip_code").notNull(),
     country: text("country").notNull(),
     yearBuilt: integer("year_built"),
@@ -88,9 +149,9 @@ export const property = pgTable(
       .notNull(),
   },
   (table) => [
-    index("property_landlord_id_idx").on(table.landlordId),
-    uniqueIndex("property_landlord_address_uid").on(
-      table.landlordId,
+    index("property_owner_id_idx").on(table.ownerId),
+    uniqueIndex("property_owner_address_uid").on(
+      table.ownerId,
       table.addressLine1,
       table.city,
       table.state,
@@ -117,5 +178,5 @@ export const property = pgTable(
 );
 
 export const propertyRelations = relations(property, ({ one }) => ({
-  landlord: one(user),
+  owner: one(user),
 }));

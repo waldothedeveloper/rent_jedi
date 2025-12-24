@@ -5,7 +5,7 @@ import { createAccessControl } from "better-auth/plugins/access";
 // - Resources: user, session (from admin defaults), property, tenant, maintenance, message, payment, invite.
 // - Actions: the verb arrays under each resource (e.g., "create", "update", "delete", "list", "view").
 // - Permissions: a resource + action pairing (e.g., property:create, maintenance:resolve).
-// - Roles: groupings of permissions; see admin, landlord, tenant below.
+// - Roles: groupings of permissions; see admin, owner, tenant below.
 
 const statement = {
   ...adminDefaultStatements,
@@ -19,6 +19,21 @@ const statement = {
 
 export const accessControl = createAccessControl(statement);
 
+export const roleNames = [
+  "admin",
+  "owner",
+  "tenant",
+  "manager",
+  "unverifiedUser",
+] as const;
+
+export type RoleName = (typeof roleNames)[number];
+
+export const isRoleName = (
+  value: string | null | undefined
+): value is RoleName =>
+  typeof value === "string" && roleNames.includes(value as RoleName);
+
 export const admin = accessControl.newRole({
   user: [...statement.user],
   session: [...statement.session],
@@ -30,34 +45,34 @@ export const admin = accessControl.newRole({
   invite: [...statement.invite],
 });
 
-export const landlord = accessControl.newRole({
-  property: ["create", "update", "delete", "list", "view"],
-  tenant: ["create", "update", "delete", "list", "view"],
-  maintenance: ["update", "resolve", "view", "create", "list"],
-  message: ["send", "receive", "view", "update", "list"],
-  payment: ["create", "update", "list", "delete"],
-  invite: ["create", "view", "list", "delete", "accept"],
+export const owner = accessControl.newRole({
+  property: [...statement.property],
+  tenant: [...statement.tenant],
+  maintenance: [...statement.maintenance],
+  message: [...statement.message],
+  payment: [...statement.payment],
+  invite: [...statement.invite],
 });
 
-// Managers/realtors managing a landlord's properties. Same permissions as landlord; scope enforcement should happen in business logic.
+// Managers/realtors managing a owner's properties. Same permissions as owner; scope enforcement should happen in business logic.
 export const manager = accessControl.newRole({
-  property: ["create", "update", "list", "view"],
-  tenant: ["create", "update", "list", "view"],
-  maintenance: ["update", "resolve", "view", "create", "list"],
-  message: ["send", "receive", "view", "update", "list"],
-  payment: ["create", "update", "list", "view"],
-  invite: ["create", "view", "list", "accept"],
+  property: [...statement.property],
+  tenant: [...statement.tenant],
+  maintenance: [...statement.maintenance],
+  message: [...statement.message],
+  payment: [...statement.payment],
+  invite: [...statement.invite],
 });
 
 export const tenant = accessControl.newRole({
   property: ["view"],
-  maintenance: ["create", "view", "update"],
+  maintenance: [...statement.maintenance],
   message: ["send", "receive", "view", "update", "list"],
   payment: ["pay", "view"],
   invite: ["view", "accept"],
 });
 
-// Unverified users have no permissions; used pre-onboarding before assigning landlord/tenant.
+// Unverified users have no permissions; used pre-onboarding before assigning owner/tenant.
 export const unverifiedUser = accessControl.newRole({
   user: [],
   session: [],

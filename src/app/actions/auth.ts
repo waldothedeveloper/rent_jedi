@@ -23,6 +23,8 @@ type LoginError = {
   name: string;
 };
 
+const OWNERS_DASHBOARD = `/owners/dashboard`;
+
 function isLoginError(e: unknown): e is LoginError {
   return (
     typeof e === "object" &&
@@ -55,6 +57,11 @@ export async function getSessionOrRedirect() {
     redirect("/login");
   }
 
+  // if (session.user.role !== "owner") {
+  //   console.error("Access denied: User is not an owner");
+  //   redirect("/login");
+  // }
+
   return session;
 }
 
@@ -72,7 +79,7 @@ export async function resendVerificationEmailAction() {
     };
   }
 
-  const callbackURL = `${getBaseUrl(headersList)}/dashboard`;
+  const callbackURL = `${getBaseUrl(headersList)}${OWNERS_DASHBOARD}`;
 
   await auth.api.sendVerificationEmail({
     headers: headersList,
@@ -115,7 +122,7 @@ export async function signUpWithGoogleAction() {
   });
 
   if ("user" in res && res.user.emailVerified) {
-    redirect("/dashboard");
+    redirect(OWNERS_DASHBOARD);
   }
   redirect("/verify-email");
 }
@@ -139,7 +146,7 @@ export async function loginAction(credentials: unknown) {
       return { success: true, redirectTo: "/login/verify-totp" };
     }
 
-    return { success: true as const, redirectTo: "/dashboard" };
+    return { success: true as const, redirectTo: OWNERS_DASHBOARD };
   } catch (error: unknown) {
     if (isLoginError(error)) {
       if (error.body.code === "EMAIL_NOT_VERIFIED") {
@@ -188,7 +195,7 @@ export async function verifyTotpAction(payload: {
       headers: await headers(),
     });
 
-    return { success: true as const, redirectTo: "/dashboard" };
+    return { success: true as const, redirectTo: OWNERS_DASHBOARD };
   } catch (error: unknown) {
     if (isLoginError(error)) {
       return {
