@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { resendVerificationEmailAction } from "../actions/auth";
+import { resendVerificationEmailAction } from "@/app/actions/auth";
 
 const initialState = {
   success: false,

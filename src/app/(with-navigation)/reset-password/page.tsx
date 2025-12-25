@@ -1,4 +1,4 @@
-import { ResetPasswordForm } from "@/app/reset-password/reset-password-form";
+import { ResetPasswordForm } from "@/app/(with-navigation)/reset-password/reset-password-form";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
