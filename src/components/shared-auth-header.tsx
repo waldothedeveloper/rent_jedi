@@ -4,11 +4,11 @@ import logo from "@/app/images/bloom_rent_logo.svg";
 
 export function SharedAuthHeader() {
   return (
-    <Link href="/" className="flex items-center self-center font-bold">
-      <div className="text-primary-background flex size-6 items-center justify-center rounded-md">
+    <Link href="/" className="ml-3 flex items-center self-center gap-2">
+      <div className="text-primary-background flex size-4 items-center justify-center rounded-md">
         <Image src={logo} alt="Bloom Rent Logo" unoptimized />
       </div>
-      <span className="ml-2 text-xl">Bloom Rent</span>
+      <strong>Bloom Rent</strong>
     </Link>
   );
 }

@@ -3,15 +3,10 @@ import { BarChart3, Building2, Key, Shield } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import type React from "react";
-import { SharedAuthHeader } from "@/components/shared-auth-header";
 
 export default function Home() {
   return (
     <section className="relative min-h-screen overflow-hidden">
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-size-[64px_64px]" />
-      <div className="flex items-center gap-3 my-8 mx-4">
-        <SharedAuthHeader />
-      </div>
       <div className="relative mx-auto max-w-7xl px-4 md:py-32 py-16 sm:px-6 lg:px-8 lg:py-40">
         <div className="grid gap-16 lg:grid-cols-2 lg:gap-12 items-center">
           {/* Left content */}

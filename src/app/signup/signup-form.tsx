@@ -63,8 +63,8 @@ export function SignupForm({
         <CardHeader className="text-center">
           <CardTitle className="text-xl">Create your account</CardTitle>
           <CardDescription>
-            Join the order of calm rentals.
-            <br /> No lightsabers required.
+            Every great landscape starts with a single place in the sun. Join us
+            and find yours.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -173,8 +173,8 @@ export function SignupForm({
                       className="w-full"
                     >
                       {isSubmitting
-                        ? "Attempting account creation..."
-                        : "Create Account"}
+                        ? "In progress, please wait..."
+                        : "Join Bloom Rent"}
                     </Button>
                   )}
                 />
