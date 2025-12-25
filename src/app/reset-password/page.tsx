@@ -1,5 +1,4 @@
 import { ResetPasswordForm } from "@/app/reset-password/reset-password-form";
-import { SharedAuthHeader } from "@/components/shared-auth-header";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -19,9 +18,8 @@ export default async function ResetPasswordPage({
         : undefined;
 
   return (
-    <div className="bg-muted flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
+    <div className="flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
       <div className="flex w-full max-w-sm flex-col gap-6">
-        <SharedAuthHeader />
         <ResetPasswordForm
           token={token}
           error={error}

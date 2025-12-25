@@ -63,7 +63,10 @@ export function LoginForm({
       <Card>
         <CardHeader className="text-center">
           <CardTitle className="text-xl">Login to your Account</CardTitle>
-          <CardDescription>Make your rentals flourish.</CardDescription>
+          <CardDescription>
+            The sun is up and the soil is waiting. <br />
+            Step back in to see what’s growing.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form
@@ -157,7 +160,7 @@ export function LoginForm({
                       disabled={!canSubmit || isSubmitting || isPristine}
                       className="w-full"
                     >
-                      {isSubmitting ? "Logging in..." : "Login"}
+                      {isSubmitting ? "Logging in..." : "Login to Bloom Rent"}
                     </Button>
                   )}
                 />
