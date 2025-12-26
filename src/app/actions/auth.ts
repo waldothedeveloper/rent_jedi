@@ -57,11 +57,6 @@ export async function getSessionOrRedirect() {
     redirect("/login");
   }
 
-  // if (session.user.role !== "owner") {
-  //   console.error("Access denied: User is not an owner");
-  //   redirect("/login");
-  // }
-
   return session;
 }
 

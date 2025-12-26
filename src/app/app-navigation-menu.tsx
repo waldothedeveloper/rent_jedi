@@ -140,8 +140,8 @@ const Navbar = ({
     },
   ],
   auth = {
-    login: { title: "Homeowners Login", url: "/login" },
-    signup: { title: "Homeowners Sign up", url: "/signup" },
+    login: { title: "Property Owner Login", url: "/login" },
+    signup: { title: "Property Owner Sign up", url: "/signup" },
   },
   className,
 }: Navbar1Props) => {

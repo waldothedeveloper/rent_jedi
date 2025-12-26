@@ -1,108 +1,77 @@
 "use server";
 
 import {
+  createPropertyDAL,
+  listPropertiesDAL,
+  verifySessionDAL,
+} from "@/dal/properties";
+import {
   propertyFormSchema,
   sanitizeText,
   toE164Phone,
 } from "@/app/(without-navigation)/owners/properties/form-helpers";
 
-import { db } from "@/db/drizzle";
-import { property } from "@/db/schema/properties-schema";
-import { auth } from "@/lib/auth";
-import { isRoleName } from "@/lib/permissions";
-import { headers } from "next/headers";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 export type CreatePropertyInput = z.infer<typeof propertyFormSchema>;
 
-export const createProperty = async (input: unknown) => {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+export const createProperty = async (input: CreatePropertyInput) => {
+  const { success, data, error } = propertyFormSchema.safeParse(input);
 
-  if (!session) {
+  if (!success) {
     return {
-      success: false as const,
+      success: false,
+      errors: error,
+    };
+  }
+
+  const userSession = await verifySessionDAL();
+  if (!userSession) {
+    return {
+      success: false,
       message: "You must be signed in to create a property.",
     };
   }
 
-  const parsed = propertyFormSchema.safeParse(input);
+  // Transform form data to match database schema, there are some fields that need conversion, for example yearBuilt is an integer for the database, but comes as a string from the form
+  const propertyData = {
+    ownerId: userSession.session.userId,
+    name: sanitizeText(data.name) || "",
+    description: sanitizeText(data.description) || undefined,
+    propertyType: data.propertyType,
+    contactEmail: sanitizeText(data.contactEmail) || undefined,
+    contactPhone: toE164Phone(data.contactPhone) || undefined,
+    addressLine1: sanitizeText(data.addressLine1) || "",
+    addressLine2: sanitizeText(data.addressLine2) || undefined,
+    city: sanitizeText(data.city) || "",
+    state: data.state,
+    zipCode: sanitizeText(data.zipCode) || "",
+    country: sanitizeText(data.country) || "",
+    unitType: data.unitType,
+    yearBuilt: data.yearBuilt ? Number(data.yearBuilt) : undefined,
+    buildingSqFt: data.buildingSqFt ? Number(data.buildingSqFt) : undefined,
+    lotSqFt: data.lotSqFt ? Number(data.lotSqFt) : undefined,
+  };
 
-  if (!parsed.success) {
+  const result = await createPropertyDAL(propertyData);
+
+  if (!result.success) {
     return {
-      success: false,
-      errors: parsed.error,
+      success: result.success,
+      message: result.message,
     };
   }
 
-  const canCreateProperty = await auth.api.userHasPermission({
-    body: {
-      userId: session.user.id,
-      role: isRoleName(session.user.role) ? session.user.role : undefined,
-      permission: {
-        property: ["create"],
-      },
-    },
-  });
+  revalidatePath("/owners/properties");
 
-  if (!canCreateProperty.success) {
-    console.error(
-      "⛔ Permission denied:",
-      canCreateProperty.error ??
-        "User does not have permission to create a property."
-    );
-    return {
-      success: false,
-      message:
-        canCreateProperty.error ??
-        "You do not have permission to create a property.",
-    };
-  }
+  return {
+    success: result.success,
+    data: result.data,
+  };
+};
 
-  try {
-    // Transform form data to match database schema
-    const propertyData = {
-      ownerId: session.user.id,
-      name: sanitizeText(parsed.data.name) || "",
-      description: sanitizeText(parsed.data.description) || undefined,
-      propertyType: parsed.data.propertyType,
-      contactEmail: sanitizeText(parsed.data.contactEmail) || undefined,
-      contactPhone: toE164Phone(parsed.data.contactPhone) || undefined,
-      addressLine1: sanitizeText(parsed.data.addressLine1) || "",
-      addressLine2: sanitizeText(parsed.data.addressLine2) || undefined,
-      city: sanitizeText(parsed.data.city) || "",
-      state: parsed.data.state,
-      zipCode: sanitizeText(parsed.data.zipCode) || "",
-      country: sanitizeText(parsed.data.country) || "",
-      unitType: parsed.data.unitType,
-      yearBuilt: parsed.data.yearBuilt
-        ? Number(parsed.data.yearBuilt)
-        : undefined,
-      buildingSqFt: parsed.data.buildingSqFt
-        ? Number(parsed.data.buildingSqFt)
-        : undefined,
-      lotSqFt: parsed.data.lotSqFt ? Number(parsed.data.lotSqFt) : undefined,
-    };
-
-    // Insert property into database
-    const [createdProperty] = await db
-      .insert(property)
-      .values(propertyData)
-      .returning();
-
-    return {
-      success: true as const,
-      data: createdProperty,
-    };
-  } catch (error) {
-    console.error("Error creating property:", error);
-    return {
-      success: false as const,
-      message:
-        error instanceof Error
-          ? error.message
-          : "Failed to create property. Please try again.",
-    };
-  }
+export const listProperties = async () => {
+  const properties = await listPropertiesDAL();
+  return properties;
 };

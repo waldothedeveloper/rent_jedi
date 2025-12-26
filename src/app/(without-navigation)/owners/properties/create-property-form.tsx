@@ -11,16 +11,12 @@ import {
 } from "@/components/ui/field";
 import {
   PropertyType,
-  UnitType,
   controlClassName,
   disallowNonNumericInput,
   formatLabel,
   formatToPhone,
   propertyFormSchema,
   propertyTypeOptions,
-  sanitizeNumber,
-  sanitizeText,
-  toE164Phone,
   unitTypeOptions,
   usStateOptions,
 } from "./form-helpers";
@@ -32,7 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { createProperty } from "@/app/actions/properties";
+import { createProperty, type CreatePropertyInput } from "@/app/actions/properties";
 import { toast } from "sonner";
 
 export function CreatePropertyForm({
@@ -69,25 +65,7 @@ export function CreatePropertyForm({
       onDynamic: propertyFormSchema,
     },
     onSubmit: async ({ value, formApi }) => {
-      const payload = {
-        name: sanitizeText(value.name),
-        description: sanitizeText(value.description),
-        unitType: value.unitType as UnitType,
-        propertyType: value.propertyType as PropertyType,
-        contactEmail: sanitizeText(value.contactEmail),
-        contactPhone: toE164Phone(value.contactPhone),
-        addressLine1: value.addressLine1.trim(),
-        addressLine2: sanitizeText(value.addressLine2),
-        city: value.city.trim(),
-        state: value.state.trim(),
-        zipCode: value.zipCode.trim(),
-        country: value.country.trim(),
-        yearBuilt: sanitizeNumber(value.yearBuilt),
-        buildingSqFt: sanitizeNumber(value.buildingSqFt),
-        lotSqFt: sanitizeNumber(value.lotSqFt),
-      };
-
-      const response = await createProperty(payload);
+      const response = await createProperty(value as CreatePropertyInput);
 
       if (!response.success) {
         toast.error(response.message || "Failed to create property");
