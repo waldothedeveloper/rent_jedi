@@ -29,9 +29,9 @@ export function EmptyStateProperty() {
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <Empty className="border-2 border-dashed">
+      <Empty className="border-2 border-dashed m-2 md:m-0">
         <EmptyHeader>
-          <EmptyMedia className="w-auto h-72 rounded-xl">
+          <EmptyMedia className="w-auto h-96">
             <Image
               className="size-full object-cover"
               src={houseImg}
@@ -53,7 +53,6 @@ export function EmptyStateProperty() {
             >
               Create Property
               <Leaf className="size-3 text-muted-foreground" />
-              {/* <span className="text-muted-foreground">&#8594;</span> */}
             </Button>
           </SheetTrigger>
         </EmptyContent>
