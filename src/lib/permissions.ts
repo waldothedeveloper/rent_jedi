@@ -10,6 +10,7 @@ import { createAccessControl } from "better-auth/plugins/access";
 const statement = {
   ...adminDefaultStatements,
   property: ["create", "update", "delete", "list", "view"],
+  unit: ["create", "update", "delete", "list", "view"],
   tenant: ["create", "update", "delete", "list", "view"],
   maintenance: ["create", "update", "resolve", "view", "list"],
   message: ["send", "receive", "view", "update", "delete", "list"],
@@ -19,13 +20,7 @@ const statement = {
 
 export const accessControl = createAccessControl(statement);
 
-export const roleNames = [
-  "admin",
-  "owner",
-  "tenant",
-  "manager",
-  "unverifiedUser",
-] as const;
+export const roleNames = ["admin", "owner", "tenant", "manager"] as const;
 
 export type RoleName = (typeof roleNames)[number];
 
@@ -38,6 +33,7 @@ export const admin = accessControl.newRole({
   user: [...statement.user],
   session: [...statement.session],
   property: [...statement.property],
+  unit: [...statement.unit],
   tenant: [...statement.tenant],
   maintenance: [...statement.maintenance],
   message: [...statement.message],
@@ -47,6 +43,7 @@ export const admin = accessControl.newRole({
 
 export const owner = accessControl.newRole({
   property: [...statement.property],
+  unit: [...statement.unit],
   tenant: [...statement.tenant],
   maintenance: [...statement.maintenance],
   message: [...statement.message],
@@ -57,6 +54,7 @@ export const owner = accessControl.newRole({
 // Managers/realtors managing a owner's properties. Same permissions as owner; scope enforcement should happen in business logic.
 export const manager = accessControl.newRole({
   property: [...statement.property],
+  unit: [...statement.unit],
   tenant: [...statement.tenant],
   maintenance: [...statement.maintenance],
   message: [...statement.message],
@@ -66,20 +64,9 @@ export const manager = accessControl.newRole({
 
 export const tenant = accessControl.newRole({
   property: ["view"],
+  unit: ["view"],
   maintenance: [...statement.maintenance],
   message: ["send", "receive", "view", "update", "list"],
   payment: ["pay", "view"],
   invite: ["view", "accept"],
-});
-
-// Unverified users have no permissions; used pre-onboarding before assigning owner/tenant.
-export const unverifiedUser = accessControl.newRole({
-  user: [],
-  session: [],
-  property: [],
-  tenant: [],
-  maintenance: [],
-  message: [],
-  payment: [],
-  invite: [],
 });

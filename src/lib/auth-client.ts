@@ -4,7 +4,6 @@ import {
   manager,
   owner,
   tenant,
-  unverifiedUser,
 } from "@/lib/permissions";
 import { adminClient, twoFactorClient } from "better-auth/client/plugins";
 
@@ -19,7 +18,6 @@ export const authClient = createAuthClient({
         owner,
         tenant,
         manager,
-        unverifiedUser,
       },
     }),
     twoFactorClient(),

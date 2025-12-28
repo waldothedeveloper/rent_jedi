@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
+import Link from "next/link";
 import { MapPin } from "lucide-react";
 import defaultHouse from "@/app/images/default-house.png";
 import type { property } from "@/db/schema/properties-schema";
@@ -66,7 +67,8 @@ export function ListProperties({ properties }: ListPropertiesProps) {
             .join(", ");
 
           return (
-            <div
+            <Link
+              href={`/owners/properties/details?id=${property.id}`}
               key={property.id}
               className="group overflow-hidden rounded-lg border bg-card text-card-foreground shadow-sm transition-all hover:shadow-md"
             >
@@ -113,7 +115,7 @@ export function ListProperties({ properties }: ListPropertiesProps) {
                   <span>{formatUnitType(property.unitType)}</span>
                 </div>
               </div>
-            </div>
+            </Link>
           );
         })}
       </div>
