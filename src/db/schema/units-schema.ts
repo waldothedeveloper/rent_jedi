@@ -24,6 +24,10 @@ export const unit = pgTable(
     bedrooms: integer("bedrooms").notNull().default(0),
     bathrooms: numeric("bathrooms", { precision: 3, scale: 1 }).notNull(),
     rentAmount: numeric("rent_amount", { precision: 12, scale: 2 }).notNull(),
+    securityDepositAmount: numeric("security_deposit_amount", {
+      precision: 12,
+      scale: 2,
+    }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
       .defaultNow()

@@ -22,7 +22,6 @@ export const propertyStatusEnum = pgEnum("property_status", [
 ]);
 
 export const propertyTypeEnum = pgEnum("property_type", [
-  "other",
   "apartment",
   "single_family_home",
   "condo",

@@ -55,7 +55,6 @@ Sign Up → Email Verification → Role Assignment → Dashboard Access
 - `owner` - Manage properties, units, tenants, payments, maintenance, invites
 - `manager` - Same as owner (scope enforced in business logic)
 - `tenant` - View property, create maintenance requests, pay rent
-- `unverifiedUser` - No permissions (pre-onboarding state)
 
 ### Data Hierarchy
 

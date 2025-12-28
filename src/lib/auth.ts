@@ -4,7 +4,6 @@ import {
   manager,
   owner,
   tenant,
-  unverifiedUser,
 } from "@/lib/permissions";
 import {
   account,
@@ -60,7 +59,6 @@ export const auth = betterAuth({
         owner,
         tenant,
         manager,
-        unverifiedUser,
       },
     }),
     nextCookies(),
