@@ -42,14 +42,6 @@ export const auth = betterAuth({
     },
   },
   trustedOrigins: ["http://localhost:3000", "https://bloomrent.com"],
-  logger: {
-    disabled: false,
-    level: "debug",
-    log: (level, message, ...args) => {
-      // Custom logging implementation
-      console.log(`Better auth [${level}] ${message}`, ...args);
-    },
-  },
   plugins: [
     twoFactorPlugin(),
     adminPlugin({

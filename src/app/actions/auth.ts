@@ -30,6 +30,7 @@ function isLoginError(e: unknown): e is LoginError {
     typeof e === "object" &&
     e !== null &&
     "body" in e &&
+    // I will accept as any here since body is not standard
     typeof (e as any).body?.code === "string"
   );
 }

@@ -73,6 +73,7 @@ User (Owner)
 2. Create Server Action in `/src/app/actions/`
 3. Use TanStack Form or React Hook Form for client-side state
 4. Show feedback with Sonner toast notifications
+5. Use DAL (Data Access Layer) functions in `/src/dal/` for DB operations
 
 ### Database Schema Location
 

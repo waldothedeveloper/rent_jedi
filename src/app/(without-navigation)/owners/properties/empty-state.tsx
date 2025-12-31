@@ -8,19 +8,12 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 
 import { Button } from "@/components/ui/button";
-import { CreatePropertyForm } from "./create-property-form";
 import Image from "next/image";
 import { Leaf } from "lucide-react";
+import Link from "next/link";
+import { Sheet } from "@/components/ui/sheet";
 import houseImg from "@/app/images/abstract-house.png";
 import { useState } from "react";
 
@@ -29,7 +22,7 @@ export function EmptyStateProperty() {
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <Empty className="border-2 border-dashed m-2 md:m-0">
+      <Empty className="border-2 border-dashed m-2">
         <EmptyHeader>
           <EmptyMedia className="w-auto h-96">
             <Image
@@ -45,7 +38,7 @@ export function EmptyStateProperty() {
           </EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
-          <SheetTrigger asChild>
+          <Link href="/owners/properties/add-property/address">
             <Button
               className="flex items-center justify-center gap-2"
               variant="outline"
@@ -54,22 +47,9 @@ export function EmptyStateProperty() {
               Create Property
               <Leaf className="size-3 text-muted-foreground" />
             </Button>
-          </SheetTrigger>
+          </Link>
         </EmptyContent>
       </Empty>
-      <SheetContent side="right" className="overflow-y-auto sm:max-w-3xl">
-        <SheetHeader className="pb-0">
-          <SheetTitle>Create a property</SheetTitle>
-          <SheetDescription>
-            Start with the essentials. You can add pricing, photos, and
-            availability after saving.
-          </SheetDescription>
-        </SheetHeader>
-        <CreatePropertyForm
-          className="px-4 pb-6"
-          onSubmitted={() => setOpen(false)}
-        />
-      </SheetContent>
     </Sheet>
   );
 }

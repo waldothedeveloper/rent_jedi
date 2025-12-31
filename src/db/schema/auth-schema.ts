@@ -1,6 +1,5 @@
 import { boolean, index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
-import { property } from "./properties-schema";
 import { relations } from "drizzle-orm";
 
 export const user = pgTable("user", {
@@ -96,13 +95,6 @@ export const twoFactor = pgTable(
     index("twoFactor_userId_idx").on(table.userId),
   ]
 );
-
-export const userRelations = relations(user, ({ many }) => ({
-  sessions: many(session),
-  accounts: many(account),
-  twoFactors: many(twoFactor),
-  properties: many(property),
-}));
 
 export const sessionRelations = relations(session, ({ one }) => ({
   user: one(user, {
