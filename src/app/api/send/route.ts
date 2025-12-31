@@ -66,7 +66,7 @@ export async function POST(request: Request) {
 
     return Response.json(data);
   } catch (error) {
-    console.log("error trynna send email : ", error);
+    console.error("error trynna send email : ", error);
     const message =
       error instanceof Error ? error.message : "Failed to send email";
     const status =

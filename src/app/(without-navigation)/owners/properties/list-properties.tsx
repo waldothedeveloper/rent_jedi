@@ -6,7 +6,9 @@ import { MapPin } from "lucide-react";
 import defaultHouse from "@/app/images/default-house.png";
 import type { property } from "@/db/schema/properties-schema";
 
-type Property = typeof property.$inferSelect;
+type Property = typeof property.$inferSelect & {
+  unitsCount: number;
+};
 
 interface ListPropertiesProps {
   properties: Property[];
@@ -41,6 +43,28 @@ const formatPropertyType = (type: string) => {
 };
 
 export function ListProperties({ properties }: ListPropertiesProps) {
+  const handleProperty = (property: Property) => {
+    // Draft properties → Route to wizard at correct step
+    if (property.propertyStatus === "draft") {
+      // No unitType → Step 2 (property type)
+      if (!property.unitType) {
+        return `/owners/properties/add-property/property-type?propertyId=${property.id}`;
+      }
+
+      // Has unitType but no units → Step 3 (unit details)
+      if (property.unitsCount === 0) {
+        const step3Path =
+          property.unitType === "single_unit"
+            ? "/owners/properties/add-property/single-unit-option"
+            : "/owners/properties/add-property/multi-unit-option";
+        return `${step3Path}?propertyId=${property.id}`;
+      }
+    }
+
+    // Active property → Route to details page
+    return `/owners/properties/details?id=${property.id}`;
+  };
+
   return (
     <div className="w-full space-y-6">
       {/* Section Header */}
@@ -49,7 +73,9 @@ export function ListProperties({ properties }: ListPropertiesProps) {
           Your Properties
         </h3>
         <div className="mt-3 sm:mt-0 sm:ml-4">
-          <Button type="button">Create Property</Button>
+          <Link href="/owners/properties/add-property/address">
+            <Button type="button">Create Property</Button>
+          </Link>
         </div>
       </div>
 
@@ -68,7 +94,7 @@ export function ListProperties({ properties }: ListPropertiesProps) {
 
           return (
             <Link
-              href={`/owners/properties/details?id=${property.id}`}
+              href={handleProperty(property)}
               key={property.id}
               className="group overflow-hidden rounded-lg border bg-card text-card-foreground shadow-sm transition-all hover:shadow-md"
             >
@@ -110,9 +136,11 @@ export function ListProperties({ properties }: ListPropertiesProps) {
 
                 {/* Property Type & Unit Type */}
                 <div className="flex flex-wrap gap-x-2 text-xs text-muted-foreground">
-                  <strong>{formatPropertyType(property.propertyType)}</strong>
+                  <strong>
+                    {formatPropertyType(property.propertyType ?? "")}
+                  </strong>
                   <span>•</span>
-                  <span>{formatUnitType(property.unitType)}</span>
+                  <span>{formatUnitType(property.unitType ?? "")}</span>
                 </div>
               </div>
             </Link>

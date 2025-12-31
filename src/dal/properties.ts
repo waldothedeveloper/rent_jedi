@@ -3,7 +3,7 @@
 import { auth } from "@/lib/auth";
 import { cache } from "react";
 import { db } from "@/db/drizzle";
-import { eq } from "drizzle-orm";
+import { count, eq, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 import { property } from "@/db/schema/properties-schema";
 import { unit } from "@/db/schema/units-schema";
@@ -90,6 +90,20 @@ export const canCreateUnit = cache(async (userId: string, role: Roles) => {
   return permissionCheck.success;
 });
 
+export const canUpdateProperty = cache(async (userId: string, role: Roles) => {
+  const permissionCheck = await auth.api.userHasPermission({
+    body: {
+      userId,
+      role,
+      permission: {
+        property: ["update"],
+      },
+    },
+  });
+
+  return permissionCheck.success;
+});
+
 /*
 
 ONLY DAL FUNCTIONS BELOW
@@ -166,10 +180,35 @@ export const listPropertiesDAL = cache(async () => {
   }
 
   try {
+    // Fetch properties with unit counts using LEFT JOIN
     const properties = await db
-      .select()
+      .select({
+        id: property.id,
+        ownerId: property.ownerId,
+        name: property.name,
+        description: property.description,
+        propertyStatus: property.propertyStatus,
+        contactEmail: property.contactEmail,
+        contactPhone: property.contactPhone,
+        propertyType: property.propertyType,
+        addressLine1: property.addressLine1,
+        addressLine2: property.addressLine2,
+        city: property.city,
+        state: property.state,
+        unitType: property.unitType,
+        zipCode: property.zipCode,
+        country: property.country,
+        yearBuilt: property.yearBuilt,
+        buildingSqFt: property.buildingSqFt,
+        lotSqFt: property.lotSqFt,
+        createdAt: property.createdAt,
+        updatedAt: property.updatedAt,
+        unitsCount: count(unit.id),
+      })
       .from(property)
-      .where(eq(property.ownerId, session.user.id));
+      .leftJoin(unit, eq(property.id, unit.propertyId))
+      .where(eq(property.ownerId, session.user.id))
+      .groupBy(property.id);
 
     return {
       success: true as const,
@@ -342,6 +381,347 @@ export const createUnitsDAL = cache(
           error instanceof Error
             ? error.message
             : "Failed to create units. Please try again.",
+      };
+    }
+  }
+);
+
+export const updatePropertyDraftDAL = cache(
+  async (
+    propertyId: string,
+    data: Partial<typeof property.$inferInsert>
+  ): Promise<{
+    success: boolean;
+    data?: typeof property.$inferSelect;
+    message?: string;
+  }> => {
+    const session = await verifySessionDAL();
+
+    if (!session) {
+      return {
+        success: false,
+        message:
+          "⛔️ Access Denied. You must be signed in to update a property.",
+      };
+    }
+
+    if (
+      !(await canUpdateProperty(session.user.id, session.user.role as Roles))
+    ) {
+      return {
+        success: false,
+        message:
+          "⛔️ Access Denied. You do not have permission to update a property.",
+      };
+    }
+
+    try {
+      // First verify the property belongs to this user
+      const existingProperty = await db
+        .select()
+        .from(property)
+        .where(eq(property.id, propertyId))
+        .limit(1)
+        .then((rows) => rows[0]);
+
+      if (!existingProperty) {
+        return {
+          success: false,
+          message: "Property not found.",
+        };
+      }
+
+      if (existingProperty.ownerId !== session.user.id) {
+        return {
+          success: false,
+          message:
+            "⛔️ Access Denied. You do not have permission to update this property.",
+        };
+      }
+
+      // Update the property
+      const [updatedProperty] = await db
+        .update(property)
+        .set({
+          ...data,
+          updatedAt: new Date(),
+        })
+        .where(eq(property.id, propertyId))
+        .returning();
+
+      return {
+        success: true,
+        data: updatedProperty,
+      };
+    } catch (error) {
+      console.error("Error updating property:", error);
+      return {
+        success: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to update property. Please try again.",
+      };
+    }
+  }
+);
+
+export const getDraftPropertyByOwnerDAL = cache(
+  async (): Promise<{
+    success: boolean;
+    data?: {
+      property: typeof property.$inferSelect;
+      unitsCount: number;
+    };
+    message?: string;
+  }> => {
+    const session = await verifySessionDAL();
+
+    if (!session) {
+      return {
+        success: false,
+        message:
+          "⛔️ Access Denied. You must be signed in to get draft property.",
+      };
+    }
+
+    try {
+      // Fetch user's draft property with unit count
+      const result = await db
+        .select({
+          id: property.id,
+          ownerId: property.ownerId,
+          name: property.name,
+          description: property.description,
+          propertyStatus: property.propertyStatus,
+          contactEmail: property.contactEmail,
+          contactPhone: property.contactPhone,
+          propertyType: property.propertyType,
+          addressLine1: property.addressLine1,
+          addressLine2: property.addressLine2,
+          city: property.city,
+          state: property.state,
+          unitType: property.unitType,
+          zipCode: property.zipCode,
+          country: property.country,
+          yearBuilt: property.yearBuilt,
+          buildingSqFt: property.buildingSqFt,
+          lotSqFt: property.lotSqFt,
+          createdAt: property.createdAt,
+          updatedAt: property.updatedAt,
+          unitsCount: count(unit.id),
+        })
+        .from(property)
+        .leftJoin(unit, eq(property.id, unit.propertyId))
+        .where(
+          sql`${property.ownerId} = ${session.user.id} AND ${property.propertyStatus} = 'draft'`
+        )
+        .groupBy(property.id)
+        .limit(1);
+
+      if (result.length === 0) {
+        return {
+          success: true,
+          data: undefined,
+        };
+      }
+
+      const { unitsCount, ...propertyData } = result[0];
+
+      return {
+        success: true,
+        data: {
+          property: propertyData,
+          unitsCount: Number(unitsCount),
+        },
+      };
+    } catch (error) {
+      console.error("Error fetching draft property:", error);
+      return {
+        success: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to fetch draft property. Please try again.",
+      };
+    }
+  }
+);
+
+export const getPropertyWithUnitsCountDAL = cache(
+  async (
+    propertyId: string
+  ): Promise<{
+    success: boolean;
+    data?: {
+      property: typeof property.$inferSelect;
+      unitsCount: number;
+    };
+    message?: string;
+  }> => {
+    const session = await verifySessionDAL();
+
+    if (!session) {
+      return {
+        success: false,
+        message:
+          "⛔️ Access Denied. You must be signed in to view property.",
+      };
+    }
+
+    if (!(await canViewProperty(session.user.id, session.user.role as Roles))) {
+      return {
+        success: false,
+        message:
+          "⛔️ Access Denied. You do not have permission to view this property.",
+      };
+    }
+
+    try {
+      // Fetch property with unit count
+      const result = await db
+        .select({
+          id: property.id,
+          ownerId: property.ownerId,
+          name: property.name,
+          description: property.description,
+          propertyStatus: property.propertyStatus,
+          contactEmail: property.contactEmail,
+          contactPhone: property.contactPhone,
+          propertyType: property.propertyType,
+          addressLine1: property.addressLine1,
+          addressLine2: property.addressLine2,
+          city: property.city,
+          state: property.state,
+          unitType: property.unitType,
+          zipCode: property.zipCode,
+          country: property.country,
+          yearBuilt: property.yearBuilt,
+          buildingSqFt: property.buildingSqFt,
+          lotSqFt: property.lotSqFt,
+          createdAt: property.createdAt,
+          updatedAt: property.updatedAt,
+          unitsCount: count(unit.id),
+        })
+        .from(property)
+        .leftJoin(unit, eq(property.id, unit.propertyId))
+        .where(eq(property.id, propertyId))
+        .groupBy(property.id)
+        .limit(1);
+
+      if (result.length === 0) {
+        return {
+          success: false,
+          message: "Property not found.",
+        };
+      }
+
+      const { unitsCount, ...propertyData } = result[0];
+
+      // Verify ownership
+      if (propertyData.ownerId !== session.user.id) {
+        return {
+          success: false,
+          message:
+            "⛔️ Access Denied. You do not have permission to view this property.",
+        };
+      }
+
+      return {
+        success: true,
+        data: {
+          property: propertyData,
+          unitsCount: Number(unitsCount),
+        },
+      };
+    } catch (error) {
+      console.error("Error fetching property with units count:", error);
+      return {
+        success: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to fetch property. Please try again.",
+      };
+    }
+  }
+);
+
+export const updateUnitDAL = cache(
+  async (
+    unitId: string,
+    data: Partial<typeof unit.$inferInsert>
+  ): Promise<{
+    success: boolean;
+    data?: typeof unit.$inferSelect;
+    message?: string;
+  }> => {
+    const session = await verifySessionDAL();
+
+    if (!session) {
+      return {
+        success: false,
+        message: "⛔️ Access Denied. You must be signed in to update a unit.",
+      };
+    }
+
+    // Verify permission
+    if (!(await canCreateUnit(session.user.id, session.user.role as Roles))) {
+      return {
+        success: false,
+        message:
+          "⛔️ Access Denied. You do not have permission to update units.",
+      };
+    }
+
+    try {
+      // Verify the unit belongs to a property owned by this user
+      const existingUnit = await db
+        .select({
+          unitId: unit.id,
+          propertyId: unit.propertyId,
+          ownerId: property.ownerId,
+        })
+        .from(unit)
+        .innerJoin(property, eq(unit.propertyId, property.id))
+        .where(eq(unit.id, unitId))
+        .limit(1)
+        .then((rows) => rows[0]);
+
+      if (!existingUnit) {
+        return {
+          success: false,
+          message: "Unit not found.",
+        };
+      }
+
+      if (existingUnit.ownerId !== session.user.id) {
+        return {
+          success: false,
+          message:
+            "⛔️ Access Denied. You do not have permission to update this unit.",
+        };
+      }
+
+      // Update the unit
+      const [updatedUnit] = await db
+        .update(unit)
+        .set(data)
+        .where(eq(unit.id, unitId))
+        .returning();
+
+      return {
+        success: true,
+        data: updatedUnit,
+      };
+    } catch (error) {
+      console.error("Error updating unit:", error);
+      return {
+        success: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to update unit. Please try again.",
       };
     }
   }

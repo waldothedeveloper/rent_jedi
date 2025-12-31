@@ -129,14 +129,12 @@ export const property = pgTable(
       .default("draft"),
     contactEmail: text("contact_email"),
     contactPhone: text("contact_phone"),
-    propertyType: propertyTypeEnum("property_type")
-      .notNull()
-      .default("single_family_home"),
+    propertyType: propertyTypeEnum("property_type"),
     addressLine1: text("address_line_1").notNull(),
     addressLine2: text("address_line_2"),
     city: text("city").notNull(),
     state: usStateEnum("state").notNull(),
-    unitType: unitTypeEnum("unit_type").notNull().default("single_unit"),
+    unitType: unitTypeEnum("unit_type"),
     zipCode: text("zip_code").notNull(),
     country: text("country").notNull(),
     yearBuilt: integer("year_built"),

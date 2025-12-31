@@ -188,8 +188,9 @@ export default function PropertyDetails({ property }: PropertyDetailsProps) {
                     Property Type
                   </p>
                   <p className="text-base font-medium">
-                    {propertyTypeLabels[property.propertyType] ||
-                      property.propertyType}
+                    {(property.propertyType && propertyTypeLabels[property.propertyType]) ||
+                      property.propertyType ||
+                      "Not specified"}
                   </p>
                 </div>
                 {property.yearBuilt && (
