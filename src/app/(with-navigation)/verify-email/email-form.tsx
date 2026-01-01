@@ -18,10 +18,6 @@ export const EmailForm = () => {
     initialState
   );
 
-  useEffect(() => {
-    startEmailVerificationCountdown();
-  }, []);
-
   function startEmailVerificationCountdown(time = 30) {
     setTimeToNextResend(time);
 
@@ -38,6 +34,10 @@ export const EmailForm = () => {
       });
     }, 1000);
   }
+
+  useEffect(() => {
+    startEmailVerificationCountdown();
+  }, []);
 
   return (
     <form

@@ -1,9 +1,10 @@
 "server only";
 
+import { count, eq, sql } from "drizzle-orm";
+
 import { auth } from "@/lib/auth";
 import { cache } from "react";
 import { db } from "@/db/drizzle";
-import { count, eq, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 import { property } from "@/db/schema/properties-schema";
 import { unit } from "@/db/schema/units-schema";
@@ -155,7 +156,7 @@ export const createPropertyDAL = cache(
       return {
         success: false as const,
         message:
-          "Failed to create property. Please try again or contact support.",
+          "Ups! Something went wrong while creating the property. Please try again or contact support.",
       };
     }
   }
@@ -427,7 +428,8 @@ export const updatePropertyDraftDAL = cache(
       if (!existingProperty) {
         return {
           success: false,
-          message: "Property not found.",
+          message:
+            "The property you are trying to update does not belongs to this user or does not exist.",
         };
       }
 
@@ -564,8 +566,7 @@ export const getPropertyWithUnitsCountDAL = cache(
     if (!session) {
       return {
         success: false,
-        message:
-          "⛔️ Access Denied. You must be signed in to view property.",
+        message: "⛔️ Access Denied. You must be signed in to view property.",
       };
     }
 

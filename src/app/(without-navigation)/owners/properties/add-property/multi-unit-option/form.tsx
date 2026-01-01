@@ -28,7 +28,8 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { unit } from "@/db/schema/units-schema";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { z } from "zod";
 
@@ -116,7 +117,13 @@ export default function MultiUnitOptionForm({
   initialUnits,
 }: MultiUnitOptionFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const unitTypeParam = searchParams.get("unitType");
+  const backHref = propertyId
+    ? `/owners/properties/add-property/property-type?propertyId=${propertyId}&completedSteps=2${unitTypeParam ? `&unitType=${unitTypeParam}` : ""}`
+    : "/owners/properties/add-property/property-type";
   const isEditMode = !!(initialUnits && initialUnits.length > 0);
+  const [formError, setFormError] = useState<string | null>(null);
 
   // Store existing unit IDs for mapping during updates
   const existingUnits = initialUnits?.map((u) => ({ id: u.id, data: u })) || [];
@@ -163,46 +170,66 @@ export default function MultiUnitOptionForm({
       onDynamic: unitsFormSchema,
     },
     onSubmit: async ({ value }) => {
-      if (!propertyId) {
-        throw new Error("Property ID is missing. Please start from step 1.");
-      }
+      setFormError(null); // Clear previous errors
 
-      // Edit mode → Update existing units + create new ones
-      if (isEditMode) {
-        const updates = value.units.map((unitData, index) => ({
-          unitId: existingUnits[index]?.id, // Will be undefined for new units
-          unitData,
-        }));
-
-        const result = await updateMultipleUnits(propertyId, updates);
-
-        if (!result.success) {
-          throw new Error(result.message || "Failed to update units");
+      try {
+        if (!propertyId) {
+          const errorMsg = "Property ID is missing. Please start from step 1.";
+          setFormError(errorMsg);
+          toast.error(errorMsg);
+          return;
         }
 
-        toast.success("Units updated successfully!");
-        router.push("/owners/properties");
-        return;
-      }
+        // Edit mode → Update existing units + create new ones
+        if (isEditMode) {
+          const updates = value.units.map((unitData, index) => ({
+            unitId: existingUnits[index]?.id, // Will be undefined for new units
+            unitData,
+          }));
 
-      // Create mode → Create all units and activate property
-      const result = await completeMultiUnitProperty({
-        propertyId,
-        units: value.units,
-      });
+          const result = await updateMultipleUnits(propertyId, updates);
 
-      if (!result.success) {
-        throw new Error(
-          result.message ||
-            "Failed to create units. Try again or contact support."
+          if (!result.success) {
+            const errorMsg = result.message || "Failed to update units";
+            setFormError(errorMsg);
+            toast.error(errorMsg);
+            return;
+          }
+
+          toast.success("Units updated successfully!");
+          router.push("/owners/properties");
+          return;
+        }
+
+        // Create mode → Create all units and activate property
+        const result = await completeMultiUnitProperty({
+          propertyId,
+          units: value.units,
+        });
+
+        if (!result.success) {
+          const errorMsg =
+            result.message ||
+            "Failed to create units. Try again or contact support.";
+          setFormError(errorMsg);
+          toast.error(errorMsg);
+          return;
+        }
+
+        toast.success(
+          `Property with ${value.units.length} unit${value.units.length > 1 ? "s" : ""} created successfully!`
         );
+
+        router.push("/owners/properties");
+      } catch (error) {
+        // Catch unexpected errors (network issues, etc.)
+        const errorMsg =
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred. Please try again.";
+        setFormError(errorMsg);
+        toast.error(errorMsg);
       }
-
-      toast.success(
-        `Property with ${value.units.length} unit${value.units.length > 1 ? "s" : ""} created successfully!`
-      );
-
-      router.push("/owners/properties");
     },
   });
 
@@ -463,6 +490,18 @@ export default function MultiUnitOptionForm({
               </Button>
             </div>
 
+            {formError && (
+              <div
+                role="alert"
+                className="rounded-md border border-destructive bg-destructive/10 p-4"
+              >
+                <p className="text-sm font-semibold text-destructive mb-1">
+                  Unable to save units
+                </p>
+                <p className="text-sm text-destructive">{formError}</p>
+              </div>
+            )}
+
             <Field>
               <FieldDescription>
                 Add all the units you plan to rent out. You can add more units
@@ -472,10 +511,10 @@ export default function MultiUnitOptionForm({
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => router.back()}
                   className="flex items-center gap-2"
+                  asChild
                 >
-                  ← Back
+                  <Link href={backHref}>← Back</Link>
                 </Button>
                 <form.Subscribe
                   selector={(state) => [state.canSubmit, state.isSubmitting]}

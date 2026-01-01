@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 import { property } from "@/db/schema/properties-schema";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { z } from "zod";
 
 interface AddPropertyAddressFormProps {
@@ -40,6 +41,7 @@ export default function AddPropertyAddressForm({
 }: AddPropertyAddressFormProps) {
   const router = useRouter();
   const isEditMode = !!propertyId && !!initialData;
+  const [formError, setFormError] = useState<string | null>(null);
 
   const defaultValues = {
     addressLine1: initialData?.addressLine1 || "",
@@ -61,42 +63,59 @@ export default function AddPropertyAddressForm({
       onDynamic: addressFormSchema,
     },
     onSubmit: async ({ value }) => {
-      // Edit mode → Update existing property
-      if (isEditMode && propertyId) {
-        const result = await updatePropertyDraft({
-          propertyId,
-          addressLine1: value.addressLine1,
-          addressLine2: value.addressLine2,
-          city: value.city,
-          state: value.state,
-          zipCode: value.zipCode,
-          country: value.country,
-        });
+      setFormError(null);
 
-        if (!result.success) {
-          throw new Error(result.message || "Failed to update address");
+      try {
+        // Edit mode → Update existing property
+        if (isEditMode && propertyId) {
+          const result = await updatePropertyDraft({
+            propertyId,
+            addressLine1: value.addressLine1,
+            addressLine2: value.addressLine2,
+            city: value.city,
+            state: value.state,
+            zipCode: value.zipCode,
+            country: value.country,
+          });
+
+          if (!result.success) {
+            const errorMsg = result.message || "Failed to update address";
+            setFormError(errorMsg);
+            toast.error(errorMsg);
+            return;
+          }
+
+          toast.success("Address updated!");
+          router.push(
+            `/owners/properties/add-property/property-type?propertyId=${propertyId}&completedSteps=1`
+          );
+          return;
         }
 
-        toast.success("Address updated!");
-        router.push(
-          `/owners/properties/add-property/property-type?propertyId=${propertyId}&completedSteps=1`
+        // Create mode → Create new property
+        const result = await createPropertyDraft(
+          value as z.infer<typeof addressFormSchema>
         );
-        return;
+
+        if (!result.success) {
+          const errorMsg = result.message || "Failed to save address";
+          setFormError(errorMsg);
+          toast.error(errorMsg);
+          return;
+        }
+
+        toast.success("Address saved! Moving to next step...");
+        router.push(
+          `/owners/properties/add-property/property-type?propertyId=${result.propertyId}&completedSteps=1`
+        );
+      } catch (error) {
+        const errorMsg =
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred. Please try again.";
+        setFormError(errorMsg);
+        toast.error(errorMsg);
       }
-
-      // Create mode → Create new property
-      const result = await createPropertyDraft(
-        value as z.infer<typeof addressFormSchema>
-      );
-
-      if (!result.success) {
-        throw new Error(result.message || "Failed to save address");
-      }
-
-      toast.success("Address saved! Moving to next step...");
-      router.push(
-        `/owners/properties/add-property/property-type?propertyId=${result.propertyId}&completedSteps=1`
-      );
     },
   });
 
@@ -305,6 +324,18 @@ export default function AddPropertyAddressForm({
                 />
               </div>
             </FieldSet>
+
+            {formError && (
+              <div
+                role="alert"
+                className="rounded-md border border-destructive bg-destructive/10 p-4"
+              >
+                <p className="text-sm font-semibold text-destructive mb-1">
+                  Unable to save address
+                </p>
+                <p className="text-sm text-destructive">{formError}</p>
+              </div>
+            )}
 
             <Field>
               <form.Subscribe

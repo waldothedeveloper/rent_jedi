@@ -59,7 +59,7 @@ export const auth = betterAuth({
     autoSignInAfterVerification: true,
     sendOnSignIn: true,
     sendOnSignUp: true,
-    sendVerificationEmail: async ({ user, url, token: _token }, _request) => {
+    sendVerificationEmail: async ({ user, url }) => {
       await fetch(apiSendUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -74,7 +74,7 @@ export const auth = betterAuth({
         console.error("Failed to send verification email", error);
       });
     },
-    async afterEmailVerification(user, request) {
+    async afterEmailVerification() {
       redirect("/owners/dashboard");
     },
   },
@@ -83,11 +83,7 @@ export const auth = betterAuth({
     requireEmailVerification: true,
     minPasswordLength: 12,
     maxPasswordLength: 128,
-    sendResetPassword: async ({
-      user,
-      url,
-      token: _token,
-    }: SendResetPasswordPayload) => {
+    sendResetPassword: async ({ user, url }: SendResetPasswordPayload) => {
       await fetch(apiSendUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
