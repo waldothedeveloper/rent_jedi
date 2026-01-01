@@ -21,14 +21,16 @@ import {
   updateUnit,
 } from "@/app/actions/properties";
 import { revalidateLogic, useForm } from "@tanstack/react-form";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { unit } from "@/db/schema/units-schema";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { z } from "zod";
 
 // Bedroom options
@@ -78,7 +80,7 @@ const bathroomOptions = [
 
 // Schema for single-unit property completion
 const singleUnitSchema = z.object({
-  unitNumber: z.string().trim().min(1, "Unit number is required."),
+  unitNumber: z.string().trim(), // Optional for single-unit properties
   bedrooms: z.string().min(1, "Please select number of bedrooms."),
   bathrooms: z.string().min(1, "Please select number of bathrooms."),
   rentAmount: z
@@ -109,8 +111,14 @@ export default function SingleUnitOptionForm({
   initialUnit,
 }: SingleUnitOptionFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const unitTypeParam = searchParams.get("unitType");
+  const backHref = propertyId
+    ? `/owners/properties/add-property/property-type?propertyId=${propertyId}&completedSteps=2${unitTypeParam ? `&unitType=${unitTypeParam}` : ""}`
+    : "/owners/properties/add-property/property-type";
   const isEditMode = !!initialUnit;
   const existingUnitId = initialUnit?.id;
+  const [formError, setFormError] = useState<string | null>(null);
 
   const defaultValues = {
     unitNumber: initialUnit?.unitNumber || "",
@@ -131,35 +139,56 @@ export default function SingleUnitOptionForm({
       onDynamic: singleUnitSchema,
     },
     onSubmit: async ({ value }) => {
-      if (!propertyId) {
-        throw new Error("Property ID is missing. Please start from step 1.");
-      }
+      setFormError(null); // Clear previous errors
 
-      // Edit mode → Update existing unit
-      if (isEditMode && existingUnitId) {
-        const result = await updateUnit(existingUnitId, value);
-
-        if (!result.success) {
-          throw new Error(result.message || "Failed to update unit");
+      try {
+        if (!propertyId) {
+          const errorMsg = "Property ID is missing. Please start from step 1.";
+          setFormError(errorMsg);
+          toast.error(errorMsg);
+          return;
         }
 
-        toast.success("Unit updated successfully!");
+        // Edit mode → Update existing unit
+        if (isEditMode && existingUnitId) {
+          const result = await updateUnit(existingUnitId, value);
+
+          if (!result.success) {
+            const errorMsg = result.message || "Failed to update unit";
+            setFormError(errorMsg);
+            toast.error(errorMsg);
+            return;
+          }
+
+          toast.success("Unit updated successfully!");
+          router.push("/owners/properties");
+          return;
+        }
+
+        // Create mode → Create new unit and activate property
+        const result = await completeSingleUnitProperty({
+          propertyId,
+          unitData: value,
+        });
+
+        if (!result.success) {
+          const errorMsg = result.message || "Failed to complete property";
+          setFormError(errorMsg);
+          toast.error(errorMsg);
+          return;
+        }
+
+        toast.success("Property created successfully!");
         router.push("/owners/properties");
-        return;
+      } catch (error) {
+        // Catch unexpected errors (network issues, etc.)
+        const errorMsg =
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred. Please try again.";
+        setFormError(errorMsg);
+        toast.error(errorMsg);
       }
-
-      // Create mode → Create new unit and activate property
-      const result = await completeSingleUnitProperty({
-        propertyId,
-        unitData: value,
-      });
-
-      if (!result.success) {
-        throw new Error(result.message || "Failed to complete property");
-      }
-
-      toast.success("Property created successfully!");
-      router.push("/owners/properties");
     },
   });
 
@@ -191,7 +220,10 @@ export default function SingleUnitOptionForm({
                 children={(field) => (
                   <Field>
                     <FieldLabel htmlFor={field.name}>
-                      Unit Name (or Number)
+                      Unit Name
+                      <span className="text-muted-foreground font-normal">
+                        (optional)
+                      </span>
                     </FieldLabel>
                     <Input
                       id={field.name}
@@ -218,7 +250,16 @@ export default function SingleUnitOptionForm({
                   name="bedrooms"
                   children={(field) => (
                     <Field>
-                      <FieldLabel htmlFor={field.name}>Bedrooms</FieldLabel>
+                      <FieldLabel
+                        htmlFor={field.name}
+                        className={
+                          field.state.meta.errors.length > 0
+                            ? "text-destructive"
+                            : ""
+                        }
+                      >
+                        Bedrooms
+                      </FieldLabel>
                       <Select
                         value={field.state.value ?? ""}
                         onValueChange={(value) => {
@@ -253,7 +294,16 @@ export default function SingleUnitOptionForm({
                   name="bathrooms"
                   children={(field) => (
                     <Field>
-                      <FieldLabel htmlFor={field.name}>Bathrooms</FieldLabel>
+                      <FieldLabel
+                        htmlFor={field.name}
+                        className={
+                          field.state.meta.errors.length > 0
+                            ? "text-destructive"
+                            : ""
+                        }
+                      >
+                        Bathrooms
+                      </FieldLabel>
                       <Select
                         value={field.state.value ?? ""}
                         onValueChange={(value) => {
@@ -291,7 +341,16 @@ export default function SingleUnitOptionForm({
                   name="rentAmount"
                   children={(field) => (
                     <Field>
-                      <FieldLabel htmlFor={field.name}>Monthly Rent</FieldLabel>
+                      <FieldLabel
+                        htmlFor={field.name}
+                        className={
+                          field.state.meta.errors.length > 0
+                            ? "text-destructive"
+                            : ""
+                        }
+                      >
+                        Monthly Rent
+                      </FieldLabel>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
                           $
@@ -354,6 +413,18 @@ export default function SingleUnitOptionForm({
               </div>
             </FieldSet>
 
+            {formError && (
+              <div
+                role="alert"
+                className="rounded-md border border-destructive bg-destructive/10 p-4"
+              >
+                <p className="text-sm font-semibold text-destructive mb-1">
+                  Unable to save unit
+                </p>
+                <p className="text-sm text-destructive">{formError}</p>
+              </div>
+            )}
+
             <Field>
               <FieldDescription>
                 This information will help renters understand what they're
@@ -363,10 +434,10 @@ export default function SingleUnitOptionForm({
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => router.back()}
                   className="flex items-center gap-2"
+                  asChild
                 >
-                  ← Back
+                  <Link href={backHref}>← Back</Link>
                 </Button>
                 <form.Subscribe
                   selector={(state) => [state.canSubmit, state.isSubmitting]}

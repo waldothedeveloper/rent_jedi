@@ -48,7 +48,7 @@ export function ListProperties({ properties }: ListPropertiesProps) {
     if (property.propertyStatus === "draft") {
       // No unitType → Step 2 (property type)
       if (!property.unitType) {
-        return `/owners/properties/add-property/property-type?propertyId=${property.id}`;
+        return `/owners/properties/add-property/property-type?propertyId=${property.id}&completedSteps=1`;
       }
 
       // Has unitType but no units → Step 3 (unit details)
@@ -57,7 +57,7 @@ export function ListProperties({ properties }: ListPropertiesProps) {
           property.unitType === "single_unit"
             ? "/owners/properties/add-property/single-unit-option"
             : "/owners/properties/add-property/multi-unit-option";
-        return `${step3Path}?propertyId=${property.id}`;
+        return `${step3Path}?propertyId=${property.id}&completedSteps=2&unitType=${property.unitType}`;
       }
     }
 

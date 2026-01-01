@@ -21,7 +21,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { property } from "@/db/schema/properties-schema";
 import { cn } from "@/lib/utils";
 import { ArrowUpRight } from "lucide-react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -41,6 +43,12 @@ export default function AddPropertyPropertyTypeForm({
   initialData,
 }: AddPropertyPropertyTypeFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const unitTypeParam = searchParams.get("unitType");
+  const backHref = propertyId
+    ? `/owners/properties/add-property/address?propertyId=${propertyId}&completedSteps=1${unitTypeParam ? `&unitType=${unitTypeParam}` : ""}`
+    : "/owners/properties/add-property/address";
+  const [formError, setFormError] = useState<string | null>(null);
 
   const defaultValues: { unitType: UnitType | "" } = {
     unitType: initialData?.unitType || "",
@@ -57,31 +65,49 @@ export default function AddPropertyPropertyTypeForm({
       onDynamic: propertyTypeSchema,
     },
     onSubmit: async ({ value }) => {
-      if (!propertyId) {
-        throw new Error("Property ID is missing. Please start from step 1.");
-      }
+      setFormError(null); // Clear previous errors
 
-      const result = await updatePropertyDraft({
-        propertyId,
-        unitType: value.unitType as UnitType,
-      });
+      try {
+        if (!propertyId) {
+          const errorMsg = "Property ID is missing. Please start from step 1.";
+          setFormError(errorMsg);
+          toast.error(errorMsg);
+          return;
+        }
 
-      if (!result.success) {
-        throw new Error(result.message || "Failed to save property type");
-      }
+        const result = await updatePropertyDraft({
+          propertyId,
+          unitType: value.unitType as UnitType,
+        });
 
-      toast.success("Property type saved! Moving to next step...");
+        if (!result.success) {
+          const errorMsg = result.message || "Failed to save property type";
+          setFormError(errorMsg);
+          toast.error(errorMsg);
+          return;
+        }
 
-      // Navigate to appropriate step based on unit type
-      const completedSteps = 2; // Address + Unit Type completed
-      if (value.unitType === "single_unit") {
-        router.push(
-          `/owners/properties/add-property/single-unit-option?propertyId=${propertyId}&completedSteps=${completedSteps}&unitType=${value.unitType}`
-        );
-      } else {
-        router.push(
-          `/owners/properties/add-property/multi-unit-option?propertyId=${propertyId}&completedSteps=${completedSteps}&unitType=${value.unitType}`
-        );
+        toast.success("Property type saved! Moving to next step...");
+
+        // Navigate to appropriate step based on unit type
+        const completedSteps = 2; // Address + Unit Type completed
+        if (value.unitType === "single_unit") {
+          router.push(
+            `/owners/properties/add-property/single-unit-option?propertyId=${propertyId}&completedSteps=${completedSteps}&unitType=${value.unitType}`
+          );
+        } else {
+          router.push(
+            `/owners/properties/add-property/multi-unit-option?propertyId=${propertyId}&completedSteps=${completedSteps}&unitType=${value.unitType}`
+          );
+        }
+      } catch (error) {
+        // Catch unexpected errors (network issues, etc.)
+        const errorMsg =
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred. Please try again.";
+        setFormError(errorMsg);
+        toast.error(errorMsg);
       }
     },
   });
@@ -175,15 +201,27 @@ export default function AddPropertyPropertyTypeForm({
               />
             </FieldSet>
 
+            {formError && (
+              <div
+                role="alert"
+                className="rounded-md border border-destructive bg-destructive/10 p-4"
+              >
+                <p className="text-sm font-semibold text-destructive mb-1">
+                  Unable to save property type
+                </p>
+                <p className="text-sm text-destructive">{formError}</p>
+              </div>
+            )}
+
             <Field>
               <div className="flex items-center justify-between gap-4">
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => router.back()}
                   className="flex items-center gap-2"
+                  asChild
                 >
-                  ← Back
+                  <Link href={backHref}>← Back</Link>
                 </Button>
                 <form.Subscribe
                   selector={(state) => [state.canSubmit, state.isSubmitting]}
