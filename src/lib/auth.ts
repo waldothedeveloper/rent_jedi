@@ -117,6 +117,23 @@ export const auth = betterAuth({
     },
   },
 
+  databaseHooks: {
+    user: {
+      create: {
+        before: async (user) => {
+          // Atomically set role to 'owner' for all new signups
+          // This runs for BOTH email/password and OAuth signups
+          return {
+            data: {
+              ...user,
+              role: "owner",
+            },
+          };
+        },
+      },
+    },
+  },
+
   database: drizzleAdapter(db, {
     provider: "pg",
     schema: {

@@ -2,15 +2,7 @@
 
 import * as React from "react";
 
-import {
-  AudioWaveform,
-  Command,
-  DollarSign,
-  GalleryVerticalEnd,
-  House,
-  MessageCircleMore,
-  Wrench,
-} from "lucide-react";
+import { DollarSign, House, MessageCircleMore, Wrench } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -19,30 +11,15 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 
+import Image from "next/image";
+import Link from "next/link";
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
-import { TeamSwitcher } from "@/components/team-switcher";
 import type { User } from "better-auth";
+import logo from "@/app/images/bloom_rent_logo.svg";
 
 // This is sample data.
 const data = {
-  teams: [
-    {
-      name: "Bloom Rent",
-      logo: GalleryVerticalEnd,
-      plan: "Enterprise",
-    },
-    {
-      name: "Acme Corp.",
-      logo: AudioWaveform,
-      plan: "Startup",
-    },
-    {
-      name: "Evil Corp.",
-      logo: Command,
-      plan: "Free",
-    },
-  ],
   navMain: [
     {
       title: "Properties",
@@ -82,7 +59,12 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <TeamSwitcher teams={data.teams} />
+        <Link href="/" className="flex items-start gap-2 mt-3 mb-6">
+          <div className="text-primary-background flex size-4 items-center justify-center">
+            <Image src={logo} alt="Bloom Rent Logo" unoptimized />
+          </div>
+          <strong>Bloom Rent</strong>
+        </Link>
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
