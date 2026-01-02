@@ -6,6 +6,55 @@ import { z } from "zod";
 export const currentYear = new Date().getFullYear();
 export const formattedPhoneRegex = /^\(\d{3}\) \d{3} - \d{4}$/;
 
+// Reusable schema builders for consistent validation and transformation
+
+// Optional string that becomes undefined when empty
+const optionalString = () =>
+  z.string().trim().transform((val) => val || undefined);
+
+// Required string (already trimmed by Zod)
+const requiredString = () => z.string().trim();
+
+// String with default value
+const stringWithDefault = (defaultValue: string) =>
+  z.string().trim().transform((val) => val || defaultValue);
+
+// Phone field with E.164 transformation
+const phoneField = () =>
+  z
+    .string()
+    .trim()
+    .transform((val) => {
+      if (!val) return undefined;
+      return toE164Phone(val) || undefined;
+    })
+    .pipe(
+      z.union([
+        z.undefined(),
+        z.string().regex(new RegExp(PHONEREGEX), "Invalid phone format"),
+      ])
+    );
+
+// Optional numeric field
+const optionalNumeric = (min?: number, max?: number) => {
+  return z
+    .union([
+      z.string().trim().regex(/^\d+$/, "Use numbers only."),
+      z.literal(""),
+    ])
+    .transform((val) => (val ? Number(val) : undefined))
+    .pipe(
+      z.union([
+        z.undefined(),
+        z
+          .number()
+          .int()
+          .refine((v) => min === undefined || v >= min)
+          .refine((v) => max === undefined || v <= max),
+      ])
+    );
+};
+
 export const disallowNonNumericInput = (
   evt: KeyboardEvent<HTMLInputElement>
 ) => {
@@ -50,23 +99,6 @@ export const toE164Phone = (value?: string | null) => {
     return `+${digits}`;
   }
   return trimmed;
-};
-
-export const numericStringSchema = z.union([
-  z.string().trim().regex(/^\d+$/, "Use numbers only."),
-  z.literal(""),
-]);
-
-export const sanitizeText = (value?: string | null) => {
-  const trimmed = value?.trim() ?? "";
-  return trimmed;
-};
-
-export const sanitizeNumber = (value?: string | null) => {
-  const trimmed = value?.trim() ?? "";
-  if (!trimmed) return "";
-  const parsed = Number(trimmed);
-  return Number.isNaN(parsed) ? trimmed : String(parsed);
 };
 
 export const formatLabel = (value: string) =>
@@ -180,57 +212,63 @@ export const usStateOptions = [
 export type USStateOption = (typeof usStateOptions)[number];
 
 export const propertyFormSchema = z.object({
-  name: z.string().trim(),
-  description: z
+  // Required strings
+  name: requiredString(),
+  addressLine1: requiredString().min(2, "Address line 1 is required."),
+  city: requiredString().min(2, "City is required."),
+  zipCode: requiredString().min(3, "ZIP / Postal code is required."),
+
+  // Required with default value
+  country: z
     .string()
     .trim()
-    .max(2000, "Keep the description under 2000 characters."),
+    .min(2, "Country is required.")
+    .transform((val) => val || "United States"),
+
+  // Optional strings
+  description: optionalString().refine(
+    (val) => !val || val.length <= 2000,
+    "Keep the description under 2000 characters."
+  ),
+  addressLine2: optionalString(),
+
+  // Enums (unchanged)
   unitType: z.enum(unitTypeOptions, "Please select a unit type."),
   propertyType: z.enum(propertyTypeOptions, "Please select a property type."),
-  contactEmail: z.union([z.email("Enter a valid email."), z.literal("")]),
-  contactPhone: z
-    .string()
-    .trim()
-    .refine(
-      (value) =>
-        value.length === 0 ||
-        formattedPhoneRegex.test(value) ||
-        new RegExp(PHONEREGEX).test(value),
-      "Use a US phone format like (555) 123 - 4567."
-    ),
-  addressLine1: z.string().trim().min(2, "Address line 1 is required."),
-  addressLine2: z.string().trim(),
-  city: z.string().trim().min(2, "City is required."),
   state: z.enum(usStateOptions, {
     message: "Select a US state or territory.",
   }),
-  zipCode: z.string().trim().min(3, "ZIP / Postal code is required."),
-  country: z.string().trim().min(2, "Country is required."),
-  yearBuilt: numericStringSchema.refine((value) => {
-    if (!value) return true;
-    const year = Number(value);
-    return year >= 1700 && year <= currentYear;
-  }, `Year built must be between 1700 and ${currentYear}.`),
-  buildingSqFt: numericStringSchema.refine((value) => {
-    if (!value) return true;
-    return Number(value) > 0;
-  }, "Building square footage must be a positive number."),
-  lotSqFt: numericStringSchema.refine((value) => {
-    if (!value) return true;
-    return Number(value) > 0;
-  }, "Lot square footage must be a positive number."),
+
+  // Email (allow empty or valid email)
+  contactEmail: z
+    .string()
+    .trim()
+    .transform((val) => val || undefined)
+    .pipe(z.union([z.undefined(), z.string().email("Enter a valid email.")])),
+
+  // Phone with E.164 transformation
+  contactPhone: phoneField(),
+
+  // Optional numeric fields
+  yearBuilt: optionalNumeric(1700, currentYear),
+  buildingSqFt: optionalNumeric(1),
+  lotSqFt: optionalNumeric(1),
 });
 
 // Address-only schema for the first step of multi-step property creation
 export const addressFormSchema = z.object({
-  addressLine1: z.string().trim().min(2, "Address line 1 is required."),
-  addressLine2: z.string().trim(),
-  city: z.string().trim().min(2, "City is required."),
+  addressLine1: requiredString().min(2, "Address line 1 is required."),
+  addressLine2: optionalString(),
+  city: requiredString().min(2, "City is required."),
   state: z.enum(usStateOptions, {
     message: "Select a US state or territory.",
   }),
-  zipCode: z.string().trim().min(3, "ZIP / Postal code is required."),
-  country: z.string().trim().min(2, "Country is required."),
+  zipCode: requiredString().min(3, "ZIP / Postal code is required."),
+  country: z
+    .string()
+    .trim()
+    .min(2, "Country is required.")
+    .transform((val) => val || "United States"),
 });
 
 export const controlClassName =

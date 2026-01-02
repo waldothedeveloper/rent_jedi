@@ -3,7 +3,6 @@
 import {
   addressFormSchema,
   propertyFormSchema,
-  sanitizeText,
   toE164Phone,
 } from "@/app/(without-navigation)/owners/properties/form-helpers";
 import {
@@ -19,7 +18,7 @@ import { z } from "zod";
 
 // Schema for creating units
 const unitInputSchema = z.object({
-  unitNumber: z.string().trim().min(1),
+  unitNumber: z.string().trim(),
   bedrooms: z.string().min(1),
   bathrooms: z.string().min(1),
   rentAmount: z.string().trim(),
@@ -31,7 +30,7 @@ const createUnitsInputSchema = z.object({
   units: z.array(unitInputSchema).min(1),
 });
 
-export type CreatePropertyInput = z.infer<typeof propertyFormSchema>;
+export type CreatePropertyInput = z.input<typeof propertyFormSchema>;
 export type CreateUnitsInput = z.infer<typeof createUnitsInputSchema>;
 
 export const createProperty = async (input: CreatePropertyInput) => {
@@ -52,24 +51,24 @@ export const createProperty = async (input: CreatePropertyInput) => {
     };
   }
 
-  // Transform form data to match database schema, there are some fields that need conversion, for example yearBuilt is an integer for the database, but comes as a string from the form
+  // Transform form data to match database schema (validation and transformation already handled by schema)
   const propertyData = {
     ownerId: userSession.session.userId,
-    name: sanitizeText(data.name) || "",
-    description: sanitizeText(data.description) || undefined,
+    name: data.name,
+    description: data.description,
     propertyType: data.propertyType,
-    contactEmail: sanitizeText(data.contactEmail) || undefined,
-    contactPhone: toE164Phone(data.contactPhone) || undefined,
-    addressLine1: sanitizeText(data.addressLine1) || "",
-    addressLine2: sanitizeText(data.addressLine2) || undefined,
-    city: sanitizeText(data.city) || "",
+    contactEmail: data.contactEmail,
+    contactPhone: data.contactPhone,
+    addressLine1: data.addressLine1,
+    addressLine2: data.addressLine2,
+    city: data.city,
     state: data.state,
-    zipCode: sanitizeText(data.zipCode) || "",
-    country: sanitizeText(data.country) || "",
+    zipCode: data.zipCode,
+    country: data.country,
     unitType: data.unitType,
-    yearBuilt: data.yearBuilt ? Number(data.yearBuilt) : undefined,
-    buildingSqFt: data.buildingSqFt ? Number(data.buildingSqFt) : undefined,
-    lotSqFt: data.lotSqFt ? Number(data.lotSqFt) : undefined,
+    yearBuilt: data.yearBuilt,
+    buildingSqFt: data.buildingSqFt,
+    lotSqFt: data.lotSqFt,
   };
 
   const result = await createPropertyDAL(propertyData);
@@ -128,7 +127,7 @@ export const createUnits = async (input: CreateUnitsInput) => {
   // Transform form data to match database schema
   const unitsData = data.units.map((unit) => ({
     propertyId: data.propertyId,
-    unitNumber: sanitizeText(unit.unitNumber) || "",
+    unitNumber: unit.unitNumber,
     bedrooms: convertBedrooms(unit.bedrooms),
     bathrooms: convertBathrooms(unit.bathrooms).toString(),
     rentAmount: Number(unit.rentAmount).toFixed(2),
@@ -185,15 +184,15 @@ export const createPropertyDraft = async (
     };
   }
 
-  // Transform address data to property format with required defaults
+  // Transform address data to property format (validation and transformation already handled by schema)
   const propertyData = {
     ownerId: userSession.session.userId,
-    addressLine1: sanitizeText(parsedData.addressLine1) || "",
-    addressLine2: sanitizeText(parsedData.addressLine2) || undefined,
-    city: sanitizeText(parsedData.city) || "",
+    addressLine1: parsedData.addressLine1,
+    addressLine2: parsedData.addressLine2,
+    city: parsedData.city,
     state: parsedData.state,
-    zipCode: sanitizeText(parsedData.zipCode) || "",
-    country: sanitizeText(parsedData.country) || "United States",
+    zipCode: parsedData.zipCode,
+    country: parsedData.country,
   };
 
   const result = await createPropertyDAL(propertyData);
@@ -253,16 +252,39 @@ const updatePropertyDraftSchema = z.object({
       "other",
     ])
     .optional(),
-  name: z.string().trim().optional(),
-  description: z.string().trim().max(2000).optional(),
-  contactEmail: z.email().optional(),
-  contactPhone: z.string().trim().optional(),
-  addressLine1: z.string().trim().optional(),
-  addressLine2: z.string().trim().optional(),
-  city: z.string().trim().optional(),
+  name: z.string().trim().transform((val) => val || undefined).optional(),
+  description: z
+    .string()
+    .trim()
+    .transform((val) => val || undefined)
+    .refine((val) => !val || val.length <= 2000, "Description too long.")
+    .optional(),
+  addressLine1: z.string().trim().transform((val) => val || undefined).optional(),
+  addressLine2: z.string().trim().transform((val) => val || undefined).optional(),
+  city: z.string().trim().transform((val) => val || undefined).optional(),
   state: z.string().optional(),
-  zipCode: z.string().trim().optional(),
-  country: z.string().trim().optional(),
+  zipCode: z.string().trim().transform((val) => val || undefined).optional(),
+  country: z.string().trim().transform((val) => val || undefined).optional(),
+  contactEmail: z
+    .string()
+    .trim()
+    .transform((val) => val || undefined)
+    .pipe(z.union([z.undefined(), z.string().email()]))
+    .optional(),
+  contactPhone: z
+    .string()
+    .trim()
+    .transform((val) => {
+      if (!val) return undefined;
+      return toE164Phone(val) || undefined;
+    })
+    .pipe(
+      z.union([
+        z.undefined(),
+        z.string().regex(/^\+[1-9]\d{1,14}$/, "Invalid phone format"),
+      ])
+    )
+    .optional(),
   yearBuilt: z
     .number()
     .int()
@@ -302,23 +324,23 @@ export const updatePropertyDraft = async (
 
   const { propertyId, ...updateData } = data;
 
-  // Transform the data for database
+  // Transform the data for database (validation and transformation already handled by schema)
   const propertyUpdateData: Record<string, unknown> = {};
 
-  if (updateData.unitType) propertyUpdateData.unitType = updateData.unitType;
-  if (updateData.propertyType)
+  if (updateData.unitType !== undefined) propertyUpdateData.unitType = updateData.unitType;
+  if (updateData.propertyType !== undefined)
     propertyUpdateData.propertyType = updateData.propertyType;
-  if (updateData.name) propertyUpdateData.name = sanitizeText(updateData.name);
-  if (updateData.description)
-    propertyUpdateData.description = sanitizeText(updateData.description);
-  if (updateData.contactEmail)
-    propertyUpdateData.contactEmail = sanitizeText(updateData.contactEmail);
-  if (updateData.contactPhone)
-    propertyUpdateData.contactPhone = toE164Phone(updateData.contactPhone);
-  if (updateData.yearBuilt) propertyUpdateData.yearBuilt = updateData.yearBuilt;
-  if (updateData.buildingSqFt)
+  if (updateData.name !== undefined) propertyUpdateData.name = updateData.name;
+  if (updateData.description !== undefined)
+    propertyUpdateData.description = updateData.description;
+  if (updateData.contactEmail !== undefined)
+    propertyUpdateData.contactEmail = updateData.contactEmail;
+  if (updateData.contactPhone !== undefined)
+    propertyUpdateData.contactPhone = updateData.contactPhone;
+  if (updateData.yearBuilt !== undefined) propertyUpdateData.yearBuilt = updateData.yearBuilt;
+  if (updateData.buildingSqFt !== undefined)
     propertyUpdateData.buildingSqFt = updateData.buildingSqFt;
-  if (updateData.lotSqFt) propertyUpdateData.lotSqFt = updateData.lotSqFt;
+  if (updateData.lotSqFt !== undefined) propertyUpdateData.lotSqFt = updateData.lotSqFt;
 
   const result = await updatePropertyDraftDAL(propertyId, propertyUpdateData);
 
@@ -340,7 +362,7 @@ export const updatePropertyDraft = async (
 
 // Schema for unit data
 const unitDataSchema = z.object({
-  unitNumber: z.string().trim().min(1),
+  unitNumber: z.string().trim(),
   bedrooms: z.string().min(1),
   bathrooms: z.string().min(1),
   rentAmount: z.string().trim(),
@@ -396,7 +418,7 @@ export const completeSingleUnitProperty = async (
   const unitsData = [
     {
       propertyId,
-      unitNumber: sanitizeText(unitData.unitNumber) || "",
+      unitNumber: unitData.unitNumber,
       bedrooms: convertBedrooms(unitData.bedrooms),
       bathrooms: convertBathrooms(unitData.bathrooms).toString(),
       rentAmount: Number(unitData.rentAmount).toFixed(2),
@@ -472,7 +494,7 @@ export const completeMultiUnitProperty = async (
   // Then, create all units
   const unitsData = units.map((unit) => ({
     propertyId,
-    unitNumber: sanitizeText(unit.unitNumber) || "",
+    unitNumber: unit.unitNumber,
     bedrooms: convertBedrooms(unit.bedrooms),
     bathrooms: convertBathrooms(unit.bathrooms).toString(),
     rentAmount: Number(unit.rentAmount).toFixed(2),
@@ -581,7 +603,7 @@ export const updateUnit = async (
 
   // Transform data
   const transformedData = {
-    unitNumber: sanitizeText(unitData.unitNumber) || "",
+    unitNumber: unitData.unitNumber,
     bedrooms: convertBedrooms(unitData.bedrooms),
     bathrooms: convertBathrooms(unitData.bathrooms).toString(),
     rentAmount: Number(unitData.rentAmount).toFixed(2),
@@ -649,7 +671,7 @@ export const updateMultipleUnits = async (
     if (toCreate.length > 0) {
       const unitsData = toCreate.map(({ unitData }) => ({
         propertyId,
-        unitNumber: sanitizeText(unitData.unitNumber) || "",
+        unitNumber: unitData.unitNumber,
         bedrooms: convertBedrooms(unitData.bedrooms),
         bathrooms: convertBathrooms(unitData.bathrooms).toString(),
         rentAmount: Number(unitData.rentAmount).toFixed(2),

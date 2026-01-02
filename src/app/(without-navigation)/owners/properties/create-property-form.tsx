@@ -65,7 +65,8 @@ export function CreatePropertyForm({
       onDynamic: propertyFormSchema,
     },
     onSubmit: async ({ value, formApi }) => {
-      const response = await createProperty(value as CreatePropertyInput);
+      // Type assertion is safe here because TanStack Form validates with the schema before calling onSubmit
+      const response = await createProperty(value as unknown as CreatePropertyInput);
 
       if (!response.success) {
         toast.error(response.message || "Failed to create property");
