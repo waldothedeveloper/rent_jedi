@@ -3,7 +3,13 @@
     "allow": [
       "Bash(npx tsc:*)",
       "Bash(ls:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(head:*)",
+      "WebSearch",
+      "WebFetch(domain:www.better-auth.com)",
+      "Bash(npx shadcn@latest:*)"
     ]
   }
 }
