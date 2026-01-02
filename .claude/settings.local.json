@@ -9,7 +9,8 @@
       "Bash(head:*)",
       "WebSearch",
       "WebFetch(domain:www.better-auth.com)",
-      "Bash(npx shadcn@latest:*)"
+      "Bash(npx shadcn@latest:*)",
+      "Bash(npm run build:*)"
     ]
   }
 }
