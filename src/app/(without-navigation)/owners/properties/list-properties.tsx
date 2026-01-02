@@ -66,7 +66,7 @@ export function ListProperties({ properties }: ListPropertiesProps) {
   };
 
   return (
-    <div className="w-full space-y-6">
+    <div className="w-full space-y-6 px-6">
       {/* Section Header */}
       <div className="border-b border-border pb-5 sm:flex sm:items-center sm:justify-between">
         <h3 className="text-base font-semibold text-foreground">
