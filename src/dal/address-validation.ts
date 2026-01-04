@@ -77,10 +77,14 @@ export const validateAddressWithGoogleDAL = cache(
             referer:
               process.env.NODE_ENV === "development"
                 ? "http://localhost:3000"
-                : "https://bloomrent.com",
+                : process.env.NEXT_PUBLIC_BASE_URL!,
           },
           body: JSON.stringify(requestBody),
         }
+      );
+
+      console.log(
+        `Google Address Validation response status: ${JSON.stringify(response, null, 2)}`
       );
 
       if (!response.ok) {
@@ -142,7 +146,10 @@ export const validateAddressWithGoogleDAL = cache(
         areIdentical,
       };
     } catch (error) {
-      console.error("Error validating address with Google:", error);
+      console.error(
+        "Error validating address with Google:",
+        JSON.stringify(error, null, 2)
+      );
       return {
         success: false,
         message:
