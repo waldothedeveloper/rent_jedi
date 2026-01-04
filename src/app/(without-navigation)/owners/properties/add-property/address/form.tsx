@@ -29,6 +29,12 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { z } from "zod";
+import { validateAddress } from "@/app/actions/address-validation";
+import { AddressSelectionDialog } from "./address-selection-dialog";
+import type {
+  NormalizedAddress,
+  AddressValidationSuccess,
+} from "@/types/google-maps";
 
 interface AddPropertyAddressFormProps {
   propertyId?: string;
@@ -42,6 +48,10 @@ export default function AddPropertyAddressForm({
   const router = useRouter();
   const isEditMode = !!propertyId && !!initialData;
   const [formError, setFormError] = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [validationResult, setValidationResult] =
+    useState<AddressValidationSuccess | null>(null);
+  const [isSavingToDB, setIsSavingToDB] = useState(false);
 
   const defaultValues = {
     addressLine1: initialData?.addressLine1 || "",
@@ -50,6 +60,60 @@ export default function AddPropertyAddressForm({
     state: initialData?.state || "",
     zipCode: initialData?.zipCode || "",
     country: initialData?.country || "United States",
+  };
+
+  // Helper function to save address to database
+  const saveAddressToDB = async (address: NormalizedAddress) => {
+    // Convert undefined to empty string for optional fields
+    const normalizedAddress = {
+      ...address,
+      addressLine2: address.addressLine2 ?? "",
+    };
+
+    if (isEditMode && propertyId) {
+      const result = await updatePropertyDraft({
+        propertyId,
+        ...normalizedAddress,
+      });
+
+      if (!result.success) {
+        throw new Error(result.message || "Failed to update address");
+      }
+
+      toast.success("Address updated!");
+      router.push(
+        `/owners/properties/add-property/property-type?propertyId=${propertyId}&completedSteps=1`
+      );
+    } else {
+      const result = await createPropertyDraft(
+        normalizedAddress as z.infer<typeof addressFormSchema>
+      );
+
+      if (!result.success) {
+        throw new Error(result.message || "Failed to save address");
+      }
+
+      toast.success("Address saved! Moving to next step...");
+      router.push(
+        `/owners/properties/add-property/property-type?propertyId=${result.propertyId}&completedSteps=1`
+      );
+    }
+  };
+
+  // Handler for dialog confirmation
+  const handleAddressConfirm = async (selectedAddress: NormalizedAddress) => {
+    setIsSavingToDB(true);
+    try {
+      await saveAddressToDB(selectedAddress);
+    } catch (error) {
+      const errorMsg =
+        error instanceof Error ? error.message : "Failed to save address";
+      setFormError(errorMsg);
+      toast.error(errorMsg);
+      setDialogOpen(false);
+    } finally {
+      setIsSavingToDB(false);
+    }
   };
 
   const form = useForm({
@@ -66,48 +130,29 @@ export default function AddPropertyAddressForm({
       setFormError(null);
 
       try {
-        // Edit mode → Update existing property
-        if (isEditMode && propertyId) {
-          const result = await updatePropertyDraft({
-            propertyId,
-            addressLine1: value.addressLine1,
-            addressLine2: value.addressLine2,
-            city: value.city,
-            state: value.state,
-            zipCode: value.zipCode,
-            country: value.country,
-          });
-
-          if (!result.success) {
-            const errorMsg = result.message || "Failed to update address";
-            setFormError(errorMsg);
-            toast.error(errorMsg);
-            return;
-          }
-
-          toast.success("Address updated!");
-          router.push(
-            `/owners/properties/add-property/property-type?propertyId=${propertyId}&completedSteps=1`
-          );
-          return;
-        }
-
-        // Create mode → Create new property
-        const result = await createPropertyDraft(
+        // Step 1: Validate address with Google Maps API
+        const validationResult = await validateAddress(
           value as z.infer<typeof addressFormSchema>
         );
 
-        if (!result.success) {
-          const errorMsg = result.message || "Failed to save address";
+        // Step 2: Handle validation errors (BLOCK USER)
+        if (!validationResult.success) {
+          const errorMsg =
+            validationResult.message || "Failed to validate address";
           setFormError(errorMsg);
           toast.error(errorMsg);
+          return; // Do NOT proceed to step 2
+        }
+
+        // Step 3: If addresses are identical, skip dialog and save directly
+        if (validationResult.areIdentical) {
+          await saveAddressToDB(validationResult.userAddress);
           return;
         }
 
-        toast.success("Address saved! Moving to next step...");
-        router.push(
-          `/owners/properties/add-property/property-type?propertyId=${result.propertyId}&completedSteps=1`
-        );
+        // Step 4: Show dialog for user to select between addresses
+        setValidationResult(validationResult);
+        setDialogOpen(true);
       } catch (error) {
         const errorMsg =
           error instanceof Error
@@ -347,9 +392,7 @@ export default function AddPropertyAddressForm({
                     className="flex items-center justify-center gap-2"
                   >
                     {isSubmitting
-                      ? isEditMode
-                        ? "Updating..."
-                        : "Saving..."
+                      ? "Validating address..."
                       : isEditMode
                         ? "Update & Continue"
                         : "Continue to step 2"}
@@ -360,6 +403,18 @@ export default function AddPropertyAddressForm({
             </Field>
           </FieldGroup>
         </form>
+
+        {/* Address Selection Dialog */}
+        {validationResult && (
+          <AddressSelectionDialog
+            open={dialogOpen}
+            onOpenChange={setDialogOpen}
+            userAddress={validationResult.userAddress}
+            googleAddress={validationResult.googleAddress}
+            onConfirm={handleAddressConfirm}
+            isLoading={isSavingToDB}
+          />
+        )}
       </div>
     </div>
   );
