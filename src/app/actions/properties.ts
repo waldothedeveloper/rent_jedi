@@ -333,6 +333,14 @@ export const updatePropertyDraft = async (
   if (updateData.name !== undefined) propertyUpdateData.name = updateData.name;
   if (updateData.description !== undefined)
     propertyUpdateData.description = updateData.description;
+  if (updateData.addressLine1 !== undefined)
+    propertyUpdateData.addressLine1 = updateData.addressLine1;
+  if (updateData.addressLine2 !== undefined)
+    propertyUpdateData.addressLine2 = updateData.addressLine2;
+  if (updateData.city !== undefined) propertyUpdateData.city = updateData.city;
+  if (updateData.state !== undefined) propertyUpdateData.state = updateData.state;
+  if (updateData.zipCode !== undefined) propertyUpdateData.zipCode = updateData.zipCode;
+  if (updateData.country !== undefined) propertyUpdateData.country = updateData.country;
   if (updateData.contactEmail !== undefined)
     propertyUpdateData.contactEmail = updateData.contactEmail;
   if (updateData.contactPhone !== undefined)
