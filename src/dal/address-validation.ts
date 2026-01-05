@@ -147,8 +147,7 @@ export const validateAddressWithGoogleDAL = cache(
       };
     } catch (error) {
       console.error(
-        "Error validating address with Google:",
-        JSON.stringify(error, null, 2)
+        "Error validating address with Google:" + JSON.stringify(error, null, 2)
       );
       return {
         success: false,
