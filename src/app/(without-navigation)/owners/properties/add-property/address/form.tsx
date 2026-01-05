@@ -138,7 +138,7 @@ export default function AddPropertyAddressForm({
             validationResult.message || "Failed to validate address";
           setFormError(errorMsg);
           toast.error(errorMsg);
-          return; // Do NOT proceed to step 2
+          return;
         }
 
         if (validationResult.areIdentical) {
