@@ -1,5 +1,9 @@
 "use client";
 
+import type {
+  AddressValidationSuccess,
+  NormalizedAddress,
+} from "@/types/google-maps";
 import {
   Field,
   FieldDescription,
@@ -20,6 +24,7 @@ import {
 } from "@/app/actions/properties";
 import { revalidateLogic, useForm } from "@tanstack/react-form";
 
+import { AddressSelectionDialog } from "./address-selection-dialog";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,13 +33,8 @@ import { property } from "@/db/schema/properties-schema";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { z } from "zod";
 import { validateAddress } from "@/app/actions/address-validation";
-import { AddressSelectionDialog } from "./address-selection-dialog";
-import type {
-  NormalizedAddress,
-  AddressValidationSuccess,
-} from "@/types/google-maps";
+import { z } from "zod";
 
 interface AddPropertyAddressFormProps {
   propertyId?: string;
@@ -62,9 +62,7 @@ export default function AddPropertyAddressForm({
     country: initialData?.country || "United States",
   };
 
-  // Helper function to save address to database
   const saveAddressToDB = async (address: NormalizedAddress) => {
-    // Convert undefined to empty string for optional fields
     const normalizedAddress = {
       ...address,
       addressLine2: address.addressLine2 ?? "",
@@ -130,12 +128,11 @@ export default function AddPropertyAddressForm({
       setFormError(null);
 
       try {
-        // Step 1: Validate address with Google Maps API
         const validationResult = await validateAddress(
           value as z.infer<typeof addressFormSchema>
         );
+        console.log("validationResult: ", validationResult);
 
-        // Step 2: Handle validation errors (BLOCK USER)
         if (!validationResult.success) {
           const errorMsg =
             validationResult.message || "Failed to validate address";
@@ -144,13 +141,11 @@ export default function AddPropertyAddressForm({
           return; // Do NOT proceed to step 2
         }
 
-        // Step 3: If addresses are identical, skip dialog and save directly
         if (validationResult.areIdentical) {
           await saveAddressToDB(validationResult.userAddress);
           return;
         }
 
-        // Step 4: Show dialog for user to select between addresses
         setValidationResult(validationResult);
         setDialogOpen(true);
       } catch (error) {
