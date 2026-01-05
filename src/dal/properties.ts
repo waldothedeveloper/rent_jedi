@@ -152,7 +152,7 @@ export const createPropertyDAL = cache(
         data: createdProperty,
       };
     } catch (error) {
-      console.error("Error creating property:", error);
+      // ("Error creating property:", error);
       return {
         success: false as const,
         message:
@@ -216,7 +216,7 @@ export const listPropertiesDAL = cache(async () => {
       data: properties,
     };
   } catch (error) {
-    console.error("Error listing properties:", error);
+    // ("Error listing properties:", error);
     return {
       success: false as const,
       message:
@@ -284,7 +284,7 @@ export const getPropertyByIdDAL = cache(
         },
       };
     } catch (error) {
-      console.error("Error fetching property by ID:", error);
+      // ("Error fetching property by ID:", error);
       return {
         success: false,
         message:
@@ -329,7 +329,6 @@ export const createUnitDAL = cache(
         data: createdUnit,
       };
     } catch (error) {
-      console.error("Error creating unit:", error);
       return {
         success: false,
         message:
@@ -375,7 +374,6 @@ export const createUnitsDAL = cache(
         data: createdUnits,
       };
     } catch (error) {
-      console.error("Error creating units:", error);
       return {
         success: false,
         message:
@@ -456,7 +454,6 @@ export const updatePropertyDraftDAL = cache(
         data: updatedProperty,
       };
     } catch (error) {
-      console.error("Error updating property:", error);
       return {
         success: false,
         message:
@@ -538,7 +535,6 @@ export const getDraftPropertyByOwnerDAL = cache(
         },
       };
     } catch (error) {
-      console.error("Error fetching draft property:", error);
       return {
         success: false,
         message:
@@ -636,7 +632,6 @@ export const getPropertyWithUnitsCountDAL = cache(
         },
       };
     } catch (error) {
-      console.error("Error fetching property with units count:", error);
       return {
         success: false,
         message:
@@ -716,7 +711,6 @@ export const updateUnitDAL = cache(
         data: updatedUnit,
       };
     } catch (error) {
-      console.error("Error updating unit:", error);
       return {
         success: false,
         message:

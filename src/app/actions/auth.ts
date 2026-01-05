@@ -159,7 +159,7 @@ export async function loginAction(credentials: unknown) {
       };
     }
 
-    // console.error("loginAction failed", error);
+    // ("loginAction failed", error);
     return {
       success: false as const,
       message: "Something went wrong. Please try again.",
@@ -200,7 +200,7 @@ export async function verifyTotpAction(payload: {
       };
     }
 
-    // console.error("verifyTotpAction failed", error);
+    // ("verifyTotpAction failed", error);
     return {
       success: false as const,
       message: "Unable to verify code. Please try again.",
@@ -253,7 +253,7 @@ export async function resetPasswordAction(
 
     return { success: true } as const;
   } catch (error: unknown) {
-    // console.error("resetPasswordAction failed", JSON.stringify(error));
+    // ("resetPasswordAction failed", JSON.stringify(error));
     if (isLoginError(error)) {
       return {
         success: false as const,
