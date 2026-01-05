@@ -45,7 +45,7 @@ export const validateAddressWithGoogleDAL = cache(
 
     const apiKey = process.env.GOOGLE_MAPS_API_KEY;
     if (!apiKey) {
-      console.error("GOOGLE_MAPS_API_KEY not configured");
+      // ("GOOGLE_MAPS_API_KEY not configured");
       return {
         success: false,
         message:
@@ -83,13 +83,9 @@ export const validateAddressWithGoogleDAL = cache(
         }
       );
 
-      console.log(
-        `Google Address Validation response status: ${JSON.stringify(response, null, 2)}`
-      );
-
       if (!response.ok) {
         if (response.status === 401) {
-          console.error("Invalid Google Maps API key");
+          // ("Invalid Google Maps API key");
           return {
             success: false,
             message: "Address validation is temporarily unavailable.",
@@ -109,13 +105,38 @@ export const validateAddressWithGoogleDAL = cache(
       const data: GoogleAddressValidationResponse = await response.json();
       const googlePostalAddress = data.result.address.postalAddress;
       const googleAddressLines = googlePostalAddress.addressLines || [];
+      const uspsAddress = data.result.uspsData?.standardizedAddress;
+      const addressComponents = data.result.address.addressComponents;
 
+      // Check if there's a confirmed subpremise component (valid apartment/suite)
+      const hasConfirmedSub = hasConfirmedSubpremise(addressComponents);
+
+      // Construct the Google recommended address
       const googleAddress: NormalizedAddress = {
-        addressLine1: googleAddressLines[0] || address.addressLine1,
-        addressLine2: googleAddressLines[1] || undefined,
-        city: googlePostalAddress.locality || address.city,
-        state: googlePostalAddress.administrativeArea || address.state,
-        zipCode: googlePostalAddress.postalCode || address.zipCode,
+        // Use USPS firstAddressLine (clean, validated), fallback to Google's
+        addressLine1:
+          uspsAddress?.firstAddressLine ||
+          googleAddressLines[0] ||
+          address.addressLine1,
+
+        // For addressLine2:
+        // - Only include if Google confirmed there's a valid subpremise component
+        // - USPS just uppercases whatever is entered, so we can't trust it alone
+        // - If no confirmed subpremise, omit addressLine2 entirely
+        addressLine2:
+          hasConfirmedSub && uspsAddress?.secondAddressLine
+            ? uspsAddress.secondAddressLine
+            : undefined,
+
+        city: uspsAddress?.city || googlePostalAddress.locality || address.city,
+        state:
+          uspsAddress?.state ||
+          googlePostalAddress.administrativeArea ||
+          address.state,
+        zipCode:
+          uspsAddress?.zipCode ||
+          googlePostalAddress.postalCode ||
+          address.zipCode,
         country: "United States",
       };
 
@@ -146,9 +167,9 @@ export const validateAddressWithGoogleDAL = cache(
         areIdentical,
       };
     } catch (error) {
-      console.error(
-        "Error validating address with Google:" + JSON.stringify(error, null, 2)
-      );
+      // (
+      //   "Error validating address with Google:" + JSON.stringify(error, null, 2)
+      // );
       return {
         success: false,
         message:
@@ -158,6 +179,26 @@ export const validateAddressWithGoogleDAL = cache(
     }
   }
 );
+
+/**
+ * Checks if there's a valid confirmed subpremise component
+ * @param addressComponents - Array of address components from Google API
+ * @returns true if there's a confirmed subpremise component
+ */
+function hasConfirmedSubpremise(
+  addressComponents?: Array<{
+    componentType: string;
+    confirmationLevel: string;
+  }>
+): boolean {
+  if (!addressComponents) return false;
+
+  return addressComponents.some(
+    (component) =>
+      component.componentType === "subpremise" &&
+      component.confirmationLevel === "CONFIRMED"
+  );
+}
 
 /**
  * Normalizes address string for comparison (case-insensitive, trim, etc.)

@@ -19,6 +19,7 @@ export interface GoogleAddressValidationResponse {
       validationGranularity: string;
       addressComplete: boolean;
       hasInferredComponents: boolean;
+      hasUnconfirmedComponents?: boolean;
     };
     address: {
       formattedAddress: string;
@@ -28,6 +29,25 @@ export interface GoogleAddressValidationResponse {
         administrativeArea: string;
         postalCode: string;
         addressLines: string[];
+      };
+      addressComponents?: Array<{
+        componentName: {
+          text: string;
+        };
+        componentType: string;
+        confirmationLevel: string;
+      }>;
+      unconfirmedComponentTypes?: string[];
+    };
+    uspsData?: {
+      standardizedAddress: {
+        firstAddressLine: string;
+        secondAddressLine?: string;
+        cityStateZipAddressLine: string;
+        city: string;
+        state: string;
+        zipCode: string;
+        zipCodeExtension?: string;
       };
     };
   };

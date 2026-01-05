@@ -131,7 +131,6 @@ export default function AddPropertyAddressForm({
         const validationResult = await validateAddress(
           value as z.infer<typeof addressFormSchema>
         );
-        console.log("validationResult: ", validationResult);
 
         if (!validationResult.success) {
           const errorMsg =

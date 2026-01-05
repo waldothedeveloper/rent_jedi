@@ -70,9 +70,7 @@ export const auth = betterAuth({
           verificationUrl: url,
           template: "email-verification",
         }),
-      }).catch((error) => {
-        console.error("Failed to send verification email", error);
-      });
+      }).catch((error) => {});
     },
     async afterEmailVerification() {
       redirect("/owners/dashboard");
@@ -94,9 +92,7 @@ export const auth = betterAuth({
           resetUrl: url,
           template: "reset",
         }),
-      }).catch((error) => {
-        console.error("Failed to send reset password email", error);
-      });
+      }).catch((error) => {});
     },
     onPasswordReset: async ({ user }: OnPasswordResetPayload) => {
       await fetch(apiSendUrl, {
@@ -108,12 +104,7 @@ export const auth = betterAuth({
           firstName: user.name,
           template: "reset-confirmation",
         }),
-      }).catch((error) => {
-        console.error(
-          "Failed to send password reset confirmation email",
-          error
-        );
-      });
+      }).catch((error) => {});
     },
   },
 
