@@ -370,7 +370,10 @@ export const updatePropertyDraft = async (
 
 // Schema for unit data
 const unitDataSchema = z.object({
-  unitNumber: z.string().trim(),
+  unitNumber: z
+    .string()
+    .transform((val) => val.trim())
+    .transform((val) => val || "Unit 1"), // Auto-generate "Unit 1" if empty
   bedrooms: z.string().min(1),
   bathrooms: z.string().min(1),
   rentAmount: z.string().trim(),

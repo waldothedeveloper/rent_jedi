@@ -376,12 +376,24 @@ export const createUnitsDAL = cache(
         data: createdUnits,
       };
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      // Detect unique constraint violations
+      if (
+        errorMessage.includes("23505") ||
+        errorMessage.includes("unique constraint") ||
+        errorMessage.includes("duplicate key")
+      ) {
+        return {
+          success: false,
+          message:
+            "A unit with this name already exists for this property. Please choose a different name.",
+        };
+      }
+
       return {
         success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Failed to create units. Please try again.",
+        message: errorMessage || "Failed to create units. Please try again.",
       };
     }
   }
