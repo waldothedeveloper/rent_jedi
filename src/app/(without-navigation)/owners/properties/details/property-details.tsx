@@ -80,6 +80,17 @@ export default function PropertyDetails({ property }: PropertyDetailsProps) {
               <div className="flex flex-wrap items-center gap-6 text-lg">
                 {!isMultiUnit ? (
                   <>
+                    {/* Unit Name/Number */}
+                    {singleUnit.unitNumber && (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <Building2 className="size-5 text-muted-foreground" />
+                          <span className="font-medium">{singleUnit.unitNumber}</span>
+                        </div>
+                        <Separator orientation="vertical" className="h-6" />
+                      </>
+                    )}
+
                     <div className="flex items-center gap-2 font-semibold">
                       <DollarSign className="size-5" />
                       <span>
