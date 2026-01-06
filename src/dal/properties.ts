@@ -205,6 +205,8 @@ export const listPropertiesDAL = cache(async () => {
         createdAt: property.createdAt,
         updatedAt: property.updatedAt,
         unitsCount: count(unit.id),
+        bedrooms: sql<number | null>`MAX(${unit.bedrooms})`,
+        bathrooms: sql<number | null>`MAX(${unit.bathrooms})`,
       })
       .from(property)
       .leftJoin(unit, eq(property.id, unit.propertyId))
