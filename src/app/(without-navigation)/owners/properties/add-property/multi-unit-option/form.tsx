@@ -120,7 +120,7 @@ export default function MultiUnitOptionForm({
   const searchParams = useSearchParams();
   const unitTypeParam = searchParams.get("unitType");
   const backHref = propertyId
-    ? `/owners/properties/add-property/property-type?propertyId=${propertyId}&completedSteps=2${unitTypeParam ? `&unitType=${unitTypeParam}` : ""}`
+    ? `/owners/properties/add-property/property-type?propertyId=${propertyId}&completedSteps=3${unitTypeParam ? `&unitType=${unitTypeParam}` : ""}`
     : "/owners/properties/add-property/property-type";
   const isEditMode = !!(initialUnits && initialUnits.length > 0);
   const [formError, setFormError] = useState<string | null>(null);

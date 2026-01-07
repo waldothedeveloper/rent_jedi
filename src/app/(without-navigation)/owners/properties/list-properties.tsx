@@ -69,18 +69,18 @@ export function ListProperties({ properties }: ListPropertiesProps) {
   const handleProperty = (property: Property) => {
     // Draft properties → Route to wizard at correct step
     if (property.propertyStatus === "draft") {
-      // No unitType → Step 2 (property type)
+      // No unitType → Step 3 (property type)
       if (!property.unitType) {
-        return `/owners/properties/add-property/property-type?propertyId=${property.id}&completedSteps=1`;
+        return `/owners/properties/add-property/property-type?propertyId=${property.id}&completedSteps=2`;
       }
 
-      // Has unitType but no units → Step 3 (unit details)
+      // Has unitType but no units → Step 4 (unit details)
       if (property.unitsCount === 0) {
-        const step3Path =
+        const step4Path =
           property.unitType === "single_unit"
             ? "/owners/properties/add-property/single-unit-option"
             : "/owners/properties/add-property/multi-unit-option";
-        return `${step3Path}?propertyId=${property.id}&completedSteps=2&unitType=${property.unitType}`;
+        return `${step4Path}?propertyId=${property.id}&completedSteps=3&unitType=${property.unitType}`;
       }
     }
 
@@ -96,7 +96,7 @@ export function ListProperties({ properties }: ListPropertiesProps) {
           Your Properties
         </h3>
         <div className="mt-3 sm:mt-0 sm:ml-4">
-          <Link href="/owners/properties/add-property/address">
+          <Link href="/owners/properties/add-property/property-name-and-description">
             <Button type="button">Create Property</Button>
           </Link>
         </div>

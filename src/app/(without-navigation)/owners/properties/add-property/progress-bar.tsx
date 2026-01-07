@@ -19,12 +19,14 @@ export default function AddPropertyProgressBar() {
 
   // Determine current step from pathname
   let currentStep = 1;
-  if (pathname.includes("/property-type")) currentStep = 2;
+  if (pathname.includes("/property-name-and-description")) currentStep = 1;
+  if (pathname.includes("/address")) currentStep = 2;
+  if (pathname.includes("/property-type")) currentStep = 3;
   if (
     pathname.includes("/single-unit-option") ||
     pathname.includes("/multi-unit-option")
   ) {
-    currentStep = 3;
+    currentStep = 4;
   }
 
   // Read progress state from URL instead of fetching from server
@@ -42,10 +44,10 @@ export default function AddPropertyProgressBar() {
   const steps: Step[] = [
     {
       id: "Step 1",
-      name: "Property Address",
+      name: "Property Name",
       href: propertyId
-        ? `/owners/properties/add-property/address?propertyId=${propertyId}&completedSteps=${completedSteps}${unitType ? `&unitType=${unitType}` : ""}`
-        : "/owners/properties/add-property/address",
+        ? `/owners/properties/add-property/property-name-and-description?propertyId=${propertyId}&completedSteps=${completedSteps}${unitType ? `&unitType=${unitType}` : ""}`
+        : "/owners/properties/add-property/property-name-and-description",
       status:
         currentStep === 1
           ? "current"
@@ -55,9 +57,9 @@ export default function AddPropertyProgressBar() {
     },
     {
       id: "Step 2",
-      name: "Property Type",
+      name: "Property Address",
       href: propertyId
-        ? `/owners/properties/add-property/property-type?propertyId=${propertyId}&completedSteps=${completedSteps}${unitType ? `&unitType=${unitType}` : ""}`
+        ? `/owners/properties/add-property/address?propertyId=${propertyId}&completedSteps=${completedSteps}${unitType ? `&unitType=${unitType}` : ""}`
         : "#",
       status:
         currentStep === 2
@@ -68,6 +70,19 @@ export default function AddPropertyProgressBar() {
     },
     {
       id: "Step 3",
+      name: "Property Type",
+      href: propertyId
+        ? `/owners/properties/add-property/property-type?propertyId=${propertyId}&completedSteps=${completedSteps}${unitType ? `&unitType=${unitType}` : ""}`
+        : "#",
+      status:
+        currentStep === 3
+          ? "current"
+          : completedSteps >= 3
+            ? "complete"
+            : "upcoming",
+    },
+    {
+      id: "Step 4",
       name: "Unit Details",
       href:
         propertyId && unitType
@@ -76,9 +91,9 @@ export default function AddPropertyProgressBar() {
             : `/owners/properties/add-property/multi-unit-option?propertyId=${propertyId}&completedSteps=${completedSteps}&unitType=${unitType}`
           : "#",
       status:
-        currentStep === 3
+        currentStep === 4
           ? "current"
-          : completedSteps >= 3
+          : completedSteps >= 4
             ? "complete"
             : "upcoming",
     },

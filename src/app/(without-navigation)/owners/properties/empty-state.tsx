@@ -38,7 +38,7 @@ export function EmptyStateProperty() {
           </EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
-          <Link href="/owners/properties/add-property/address">
+          <Link href="/owners/properties/add-property/property-name-and-description">
             <Button
               className="flex items-center justify-center gap-2"
               variant="outline"
