@@ -46,7 +46,7 @@ export default function AddPropertyPropertyTypeForm({
   const searchParams = useSearchParams();
   const unitTypeParam = searchParams.get("unitType");
   const backHref = propertyId
-    ? `/owners/properties/add-property/address?propertyId=${propertyId}&completedSteps=1${unitTypeParam ? `&unitType=${unitTypeParam}` : ""}`
+    ? `/owners/properties/add-property/address?propertyId=${propertyId}&completedSteps=2${unitTypeParam ? `&unitType=${unitTypeParam}` : ""}`
     : "/owners/properties/add-property/address";
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -90,7 +90,7 @@ export default function AddPropertyPropertyTypeForm({
         toast.success("Property type saved! Moving to next step...");
 
         // Navigate to appropriate step based on unit type
-        const completedSteps = 2; // Address + Unit Type completed
+        const completedSteps = 3; // Name + Address + Unit Type completed
         if (value.unitType === "single_unit") {
           router.push(
             `/owners/properties/add-property/single-unit-option?propertyId=${propertyId}&completedSteps=${completedSteps}&unitType=${value.unitType}`
@@ -231,7 +231,7 @@ export default function AddPropertyPropertyTypeForm({
                       disabled={!canSubmit || isSubmitting}
                       className="flex items-center justify-center gap-2"
                     >
-                      {isSubmitting ? "Saving..." : "Continue to step 3"}
+                      {isSubmitting ? "Saving..." : "Continue to Unit Details"}
                       <ArrowUpRight className="size-4 text-muted" />
                     </Button>
                   )}

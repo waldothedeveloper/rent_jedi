@@ -155,24 +155,34 @@ export const createUnits = async (input: CreateUnitsInput) => {
   };
 };
 
+// Extended schema for creating property draft with optional name and description
+const createPropertyDraftSchema = addressFormSchema.extend({
+  name: z.string().trim().optional(),
+  description: z
+    .string()
+    .trim()
+    .transform((val) => val || undefined)
+    .optional(),
+});
+
 export const createPropertyDraft = async (
-  data: z.infer<typeof addressFormSchema>
+  data: z.infer<typeof createPropertyDraftSchema>
 ): Promise<{
   success: boolean;
   propertyId?: string;
   message?: string;
 }> => {
-  // Validate address data
+  // Validate address data with optional name/description
   const {
     success,
     data: parsedData,
     error,
-  } = addressFormSchema.safeParse(data);
+  } = createPropertyDraftSchema.safeParse(data);
 
   if (!success) {
     return {
       success: false,
-      message: error.message || "Invalid address data provided.",
+      message: error.message || "Invalid property data provided.",
     };
   }
 
@@ -184,7 +194,7 @@ export const createPropertyDraft = async (
     };
   }
 
-  // Transform address data to property format (validation and transformation already handled by schema)
+  // Transform data to property format (validation and transformation already handled by schema)
   const propertyData = {
     ownerId: userSession.session.userId,
     addressLine1: parsedData.addressLine1,
@@ -193,6 +203,8 @@ export const createPropertyDraft = async (
     state: parsedData.state,
     zipCode: parsedData.zipCode,
     country: parsedData.country,
+    name: parsedData.name,
+    description: parsedData.description,
   };
 
   const result = await createPropertyDAL(propertyData);

@@ -114,7 +114,7 @@ export default function SingleUnitOptionForm({
   const searchParams = useSearchParams();
   const unitTypeParam = searchParams.get("unitType");
   const backHref = propertyId
-    ? `/owners/properties/add-property/property-type?propertyId=${propertyId}&completedSteps=2${unitTypeParam ? `&unitType=${unitTypeParam}` : ""}`
+    ? `/owners/properties/add-property/property-type?propertyId=${propertyId}&completedSteps=3${unitTypeParam ? `&unitType=${unitTypeParam}` : ""}`
     : "/owners/properties/add-property/property-type";
   const isEditMode = !!initialUnit;
   const existingUnitId = initialUnit?.id;

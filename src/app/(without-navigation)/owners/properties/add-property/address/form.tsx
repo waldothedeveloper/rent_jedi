@@ -32,7 +32,7 @@ import { cn } from "@/lib/utils";
 import { property } from "@/db/schema/properties-schema";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { validateAddress } from "@/app/actions/address-validation";
 import { z } from "zod";
 
@@ -52,6 +52,16 @@ export default function AddPropertyAddressForm({
   const [validationResult, setValidationResult] =
     useState<AddressValidationSuccess | null>(null);
   const [isSavingToDB, setIsSavingToDB] = useState(false);
+  const [nameFromStorage, setNameFromStorage] = useState<string>("");
+  const [descriptionFromStorage, setDescriptionFromStorage] = useState<string>("");
+
+  // Read name and description from localStorage on mount
+  useEffect(() => {
+    const name = localStorage.getItem("draft-property-name") || "";
+    const description = localStorage.getItem("draft-property-description") || "";
+    setNameFromStorage(name);
+    setDescriptionFromStorage(description);
+  }, []);
 
   const defaultValues = {
     addressLine1: initialData?.addressLine1 || "",
@@ -80,20 +90,27 @@ export default function AddPropertyAddressForm({
 
       toast.success("Address updated!");
       router.push(
-        `/owners/properties/add-property/property-type?propertyId=${propertyId}&completedSteps=1`
+        `/owners/properties/add-property/property-type?propertyId=${propertyId}&completedSteps=2`
       );
     } else {
-      const result = await createPropertyDraft(
-        normalizedAddress as z.infer<typeof addressFormSchema>
-      );
+      // Create new draft with address + name/description from localStorage
+      const result = await createPropertyDraft({
+        ...normalizedAddress,
+        name: nameFromStorage,
+        description: descriptionFromStorage || undefined,
+      } as z.infer<typeof addressFormSchema>);
 
       if (!result.success) {
         throw new Error(result.message || "Failed to save address");
       }
 
+      // Clear localStorage after successful draft creation
+      localStorage.removeItem("draft-property-name");
+      localStorage.removeItem("draft-property-description");
+
       toast.success("Address saved! Moving to next step...");
       router.push(
-        `/owners/properties/add-property/property-type?propertyId=${result.propertyId}&completedSteps=1`
+        `/owners/properties/add-property/property-type?propertyId=${result.propertyId}&completedSteps=2`
       );
     }
   };
@@ -377,23 +394,38 @@ export default function AddPropertyAddressForm({
             )}
 
             <Field>
-              <form.Subscribe
-                selector={(state) => [state.canSubmit, state.isSubmitting]}
-                children={([canSubmit, isSubmitting]) => (
-                  <Button
-                    type="submit"
-                    disabled={!canSubmit || isSubmitting}
-                    className="flex items-center justify-center gap-2"
-                  >
-                    {isSubmitting
-                      ? "Validating address..."
-                      : isEditMode
-                        ? "Update & Continue"
-                        : "Continue to step 2"}
-                    <ArrowRight className="size-4 text-muted" />
-                  </Button>
-                )}
-              />
+              <div className="flex items-center justify-between gap-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() =>
+                    router.push(
+                      propertyId
+                        ? `/owners/properties/add-property/property-name-and-description?propertyId=${propertyId}`
+                        : "/owners/properties/add-property/property-name-and-description"
+                    )
+                  }
+                >
+                  ← Back
+                </Button>
+                <form.Subscribe
+                  selector={(state) => [state.canSubmit, state.isSubmitting]}
+                  children={([canSubmit, isSubmitting]) => (
+                    <Button
+                      type="submit"
+                      disabled={!canSubmit || isSubmitting}
+                      className="flex items-center justify-center gap-2"
+                    >
+                      {isSubmitting
+                        ? "Validating address..."
+                        : isEditMode
+                          ? "Update & Continue"
+                          : "Continue to Property Type"}
+                      <ArrowRight className="size-4 text-muted" />
+                    </Button>
+                  )}
+                />
+              </div>
             </Field>
           </FieldGroup>
         </form>
