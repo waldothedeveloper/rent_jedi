@@ -14,7 +14,7 @@ export default function ErrorComponent({
   title = "Something went wrong",
   description,
   errorLabel = "Error",
-  startOverHref = "/owners/properties/add-property/address",
+  startOverHref = "/owners/properties/add-property/property-name-and-description",
   startOverText = "Start Over",
   contactSupportHref = "/contact-support",
   contactSupportText = "Contact Support",

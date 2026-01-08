@@ -85,7 +85,6 @@ export const validateAddressWithGoogleDAL = cache(
 
       if (!response.ok) {
         if (response.status === 401) {
-          // ("Invalid Google Maps API key");
           return {
             success: false,
             message: "Address validation is temporarily unavailable.",
@@ -103,20 +102,22 @@ export const validateAddressWithGoogleDAL = cache(
       }
 
       const data: GoogleAddressValidationResponse = await response.json();
-      const googlePostalAddress = data.result.address.postalAddress;
-      const googleAddressLines = googlePostalAddress.addressLines || [];
-      const uspsAddress = data.result.uspsData?.standardizedAddress;
+      const verdict = data.result.verdict;
+      const postalAddress = data.result.address.postalAddress;
       const addressComponents = data.result.address.addressComponents;
+
+      // Fallback to uspsData only if postalAddress is missing data
+      const uspsAddress = data.result.uspsData?.standardizedAddress;
 
       // Check if there's a confirmed subpremise component (valid apartment/suite)
       const hasConfirmedSub = hasConfirmedSubpremise(addressComponents);
 
-      // Construct the Google recommended address
+      // Construct the Google recommended address from postalAddress (guaranteed)
       const googleAddress: NormalizedAddress = {
-        // Use USPS firstAddressLine (clean, validated), fallback to Google's
+        // Use postalAddress.addressLines[0] as primary source
         addressLine1:
+          postalAddress.addressLines[0] ||
           uspsAddress?.firstAddressLine ||
-          googleAddressLines[0] ||
           address.addressLine1,
 
         // For addressLine2:
@@ -128,15 +129,13 @@ export const validateAddressWithGoogleDAL = cache(
             ? uspsAddress.secondAddressLine
             : undefined,
 
-        city: uspsAddress?.city || googlePostalAddress.locality || address.city,
+        city: postalAddress.locality || uspsAddress?.city || address.city,
         state:
+          postalAddress.administrativeArea ||
           uspsAddress?.state ||
-          googlePostalAddress.administrativeArea ||
           address.state,
         zipCode:
-          uspsAddress?.zipCode ||
-          googlePostalAddress.postalCode ||
-          address.zipCode,
+          postalAddress.postalCode || uspsAddress?.zipCode || address.zipCode,
         country: "United States",
       };
 
@@ -149,27 +148,41 @@ export const validateAddressWithGoogleDAL = cache(
         country: address.country,
       };
 
-      const areIdentical =
-        normalizeForComparison(userAddress.addressLine1) ===
-          normalizeForComparison(googleAddress.addressLine1) &&
-        normalizeForComparison(userAddress.addressLine2) ===
-          normalizeForComparison(googleAddress.addressLine2) &&
-        normalizeForComparison(userAddress.city) ===
-          normalizeForComparison(googleAddress.city) &&
-        userAddress.state === googleAddress.state &&
-        normalizeForComparison(userAddress.zipCode) ===
-          normalizeForComparison(googleAddress.zipCode);
+      // Determine if we should prompt user based on Google's recommendation
+      const shouldPromptUser = verdict.possibleNextAction !== "ACCEPT";
+
+      // Generate user-friendly validation message
+      let validationMessage: string | undefined;
+
+      switch (verdict.possibleNextAction) {
+        case "FIX":
+          validationMessage =
+            "This address does not seem correct. Please verify the address and correct the information.";
+          break;
+        case "CONFIRM_ADD_SUBPREMISES":
+          validationMessage =
+            "This address may be missing a unit number. Please add apartment, suite, or unit number if applicable.";
+          break;
+        case "CONFIRM":
+          validationMessage =
+            "Please confirm this address is correct. We found some minor differences.";
+          break;
+        case "ACCEPT":
+          validationMessage = undefined; // High quality address, no message needed
+          break;
+        default:
+          validationMessage = "Please verify this address.";
+      }
 
       return {
         success: true,
         userAddress,
         googleAddress,
-        areIdentical,
+        verdict,
+        shouldPromptUser,
+        validationMessage,
       };
     } catch (error) {
-      // (
-      //   "Error validating address with Google:" + JSON.stringify(error, null, 2)
-      // );
       return {
         success: false,
         message:
@@ -198,11 +211,4 @@ function hasConfirmedSubpremise(
       component.componentType === "subpremise" &&
       component.confirmationLevel === "CONFIRMED"
   );
-}
-
-/**
- * Normalizes address string for comparison (case-insensitive, trim, etc.)
- */
-function normalizeForComparison(value?: string): string {
-  return (value || "").trim().toLowerCase().replace(/\s+/g, " ");
 }
