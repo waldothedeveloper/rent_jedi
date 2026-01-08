@@ -23,6 +23,7 @@ import {
   updatePropertyDraft,
 } from "@/app/actions/properties";
 import { revalidateLogic, useForm } from "@tanstack/react-form";
+import { useEffect, useState } from "react";
 
 import { AddressSelectionDialog } from "./address-selection-dialog";
 import { ArrowRight } from "lucide-react";
@@ -32,7 +33,6 @@ import { cn } from "@/lib/utils";
 import { property } from "@/db/schema/properties-schema";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
 import { validateAddress } from "@/app/actions/address-validation";
 import { z } from "zod";
 
@@ -53,12 +53,14 @@ export default function AddPropertyAddressForm({
     useState<AddressValidationSuccess | null>(null);
   const [isSavingToDB, setIsSavingToDB] = useState(false);
   const [nameFromStorage, setNameFromStorage] = useState<string>("");
-  const [descriptionFromStorage, setDescriptionFromStorage] = useState<string>("");
+  const [descriptionFromStorage, setDescriptionFromStorage] =
+    useState<string>("");
 
   // Read name and description from localStorage on mount
   useEffect(() => {
     const name = localStorage.getItem("draft-property-name") || "";
-    const description = localStorage.getItem("draft-property-description") || "";
+    const description =
+      localStorage.getItem("draft-property-description") || "";
     setNameFromStorage(name);
     setDescriptionFromStorage(description);
   }, []);
@@ -157,11 +159,19 @@ export default function AddPropertyAddressForm({
           return;
         }
 
-        if (validationResult.areIdentical) {
-          await saveAddressToDB(validationResult.userAddress);
+        // Handle based on Google's recommendation
+        if (validationResult.verdict.possibleNextAction === "FIX") {
+          // Show error - address has significant issues
+          setFormError(
+            validationResult.validationMessage || "Please fix the address"
+          );
+          toast.error(
+            "This address cannot be validated. Please check for errors."
+          );
           return;
         }
 
+        // For CONFIRM, CONFIRM_ADD_SUBPREMISES, ACCEPT, or missing verdict - show dialog
         setValidationResult(validationResult);
         setDialogOpen(true);
       } catch (error) {
@@ -437,6 +447,8 @@ export default function AddPropertyAddressForm({
             onOpenChange={setDialogOpen}
             userAddress={validationResult.userAddress}
             googleAddress={validationResult.googleAddress}
+            verdict={validationResult.verdict}
+            validationMessage={validationResult.validationMessage}
             onConfirm={handleAddressConfirm}
             isLoading={isSavingToDB}
           />

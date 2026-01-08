@@ -15,7 +15,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 import { Check } from "lucide-react";
 import { Label } from "@/components/ui/label";
-import type { NormalizedAddress } from "@/types/google-maps";
+import type { NormalizedAddress, Verdict } from "@/types/google-maps";
 import { useState } from "react";
 
 interface AddressSelectionDialogProps {
@@ -23,6 +23,8 @@ interface AddressSelectionDialogProps {
   onOpenChange: (open: boolean) => void;
   userAddress: NormalizedAddress;
   googleAddress: NormalizedAddress;
+  verdict?: Verdict;
+  validationMessage?: string;
   onConfirm: (selectedAddress: NormalizedAddress) => void;
   isLoading?: boolean;
 }
@@ -32,6 +34,8 @@ export function AddressSelectionDialog({
   onOpenChange,
   userAddress,
   googleAddress,
+  verdict,
+  validationMessage,
   onConfirm,
   isLoading = false,
 }: AddressSelectionDialogProps) {
@@ -54,6 +58,12 @@ export function AddressSelectionDialog({
             to use.
           </AlertDialogDescription>
         </AlertDialogHeader>
+
+        {validationMessage && (
+          <div className="rounded-md bg-muted p-3 mb-4">
+            <p className="text-sm text-muted-foreground">{validationMessage}</p>
+          </div>
+        )}
 
         <RadioGroup
           value={selectedAddress}

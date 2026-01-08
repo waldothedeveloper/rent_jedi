@@ -232,7 +232,7 @@ export default function SingleUnitOptionForm({
                       onChange={(event) =>
                         field.handleChange(event.target.value)
                       }
-                      placeholder="Optional - defaults to 'Unit 1'"
+                      placeholder="Optional - defaults to 'Main Unit'"
                       className={cn(
                         "w-full",
                         field.state.meta.errors.length > 0 &&
@@ -240,7 +240,7 @@ export default function SingleUnitOptionForm({
                       )}
                     />
                     <FieldDescription>
-                      Leave empty to auto-generate "Unit 1"
+                      Leave empty to auto-generate "Main Unit" as the unit name.
                     </FieldDescription>
                     <FieldError errors={field.state.meta.errors} />
                   </Field>

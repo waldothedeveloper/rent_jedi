@@ -14,20 +14,14 @@ export interface GoogleAddressValidationRequest {
 // Response types
 export interface GoogleAddressValidationResponse {
   result: {
-    verdict: {
-      inputGranularity: string;
-      validationGranularity: string;
-      addressComplete: boolean;
-      hasInferredComponents: boolean;
-      hasUnconfirmedComponents?: boolean;
-    };
+    verdict: Verdict;
     address: {
       formattedAddress: string;
       postalAddress: {
         regionCode: string;
-        locality: string;
-        administrativeArea: string;
-        postalCode: string;
+        locality?: string;
+        administrativeArea?: string;
+        postalCode?: string;
         addressLines: string[];
       };
       addressComponents?: Array<{
@@ -37,20 +31,48 @@ export interface GoogleAddressValidationResponse {
         componentType: string;
         confirmationLevel: string;
       }>;
+      missingComponentTypes?: string[];
       unconfirmedComponentTypes?: string[];
     };
     uspsData?: {
       standardizedAddress: {
         firstAddressLine: string;
         secondAddressLine?: string;
-        cityStateZipAddressLine: string;
+        cityStateZipAddressLine?: string;
         city: string;
         state: string;
-        zipCode: string;
+        zipCode?: string;
         zipCodeExtension?: string;
       };
     };
   };
+}
+
+// Verdict types
+export type ValidationGranularity =
+  | "GRANULARITY_UNSPECIFIED"
+  | "SUB_PREMISE"
+  | "PREMISE"
+  | "PREMISE_PROXIMITY"
+  | "BLOCK"
+  | "ROUTE"
+  | "OTHER";
+
+export type PossibleNextAction =
+  | "ACCEPT"
+  | "CONFIRM"
+  | "CONFIRM_ADD_SUBPREMISES"
+  | "FIX";
+
+export interface Verdict {
+  inputGranularity?: ValidationGranularity;
+  validationGranularity?: ValidationGranularity;
+  geocodeGranularity?: ValidationGranularity;
+  addressComplete?: boolean;
+  hasUnconfirmedComponents?: boolean;
+  hasInferredComponents?: boolean;
+  hasReplacedComponents?: boolean;
+  possibleNextAction?: PossibleNextAction;
 }
 
 // Normalized address type (matches database schema)
@@ -75,7 +97,9 @@ export interface AddressValidationSuccess {
   success: true;
   userAddress: NormalizedAddress;
   googleAddress: NormalizedAddress;
-  areIdentical: boolean; // If true, skip dialog
+  verdict: Verdict;
+  shouldPromptUser: boolean;
+  validationMessage?: string;
 }
 
 // Union type for validation results

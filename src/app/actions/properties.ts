@@ -264,19 +264,43 @@ const updatePropertyDraftSchema = z.object({
       "other",
     ])
     .optional(),
-  name: z.string().trim().transform((val) => val || undefined).optional(),
+  name: z
+    .string()
+    .trim()
+    .transform((val) => val || undefined)
+    .optional(),
   description: z
     .string()
     .trim()
     .transform((val) => val || undefined)
     .refine((val) => !val || val.length <= 2000, "Description too long.")
     .optional(),
-  addressLine1: z.string().trim().transform((val) => val || undefined).optional(),
-  addressLine2: z.string().trim().transform((val) => val || undefined).optional(),
-  city: z.string().trim().transform((val) => val || undefined).optional(),
+  addressLine1: z
+    .string()
+    .trim()
+    .transform((val) => val || undefined)
+    .optional(),
+  addressLine2: z
+    .string()
+    .trim()
+    .transform((val) => val || undefined)
+    .optional(),
+  city: z
+    .string()
+    .trim()
+    .transform((val) => val || undefined)
+    .optional(),
   state: z.string().optional(),
-  zipCode: z.string().trim().transform((val) => val || undefined).optional(),
-  country: z.string().trim().transform((val) => val || undefined).optional(),
+  zipCode: z
+    .string()
+    .trim()
+    .transform((val) => val || undefined)
+    .optional(),
+  country: z
+    .string()
+    .trim()
+    .transform((val) => val || undefined)
+    .optional(),
   contactEmail: z
     .string()
     .trim()
@@ -339,7 +363,8 @@ export const updatePropertyDraft = async (
   // Transform the data for database (validation and transformation already handled by schema)
   const propertyUpdateData: Record<string, unknown> = {};
 
-  if (updateData.unitType !== undefined) propertyUpdateData.unitType = updateData.unitType;
+  if (updateData.unitType !== undefined)
+    propertyUpdateData.unitType = updateData.unitType;
   if (updateData.propertyType !== undefined)
     propertyUpdateData.propertyType = updateData.propertyType;
   if (updateData.name !== undefined) propertyUpdateData.name = updateData.name;
@@ -350,17 +375,22 @@ export const updatePropertyDraft = async (
   if (updateData.addressLine2 !== undefined)
     propertyUpdateData.addressLine2 = updateData.addressLine2;
   if (updateData.city !== undefined) propertyUpdateData.city = updateData.city;
-  if (updateData.state !== undefined) propertyUpdateData.state = updateData.state;
-  if (updateData.zipCode !== undefined) propertyUpdateData.zipCode = updateData.zipCode;
-  if (updateData.country !== undefined) propertyUpdateData.country = updateData.country;
+  if (updateData.state !== undefined)
+    propertyUpdateData.state = updateData.state;
+  if (updateData.zipCode !== undefined)
+    propertyUpdateData.zipCode = updateData.zipCode;
+  if (updateData.country !== undefined)
+    propertyUpdateData.country = updateData.country;
   if (updateData.contactEmail !== undefined)
     propertyUpdateData.contactEmail = updateData.contactEmail;
   if (updateData.contactPhone !== undefined)
     propertyUpdateData.contactPhone = updateData.contactPhone;
-  if (updateData.yearBuilt !== undefined) propertyUpdateData.yearBuilt = updateData.yearBuilt;
+  if (updateData.yearBuilt !== undefined)
+    propertyUpdateData.yearBuilt = updateData.yearBuilt;
   if (updateData.buildingSqFt !== undefined)
     propertyUpdateData.buildingSqFt = updateData.buildingSqFt;
-  if (updateData.lotSqFt !== undefined) propertyUpdateData.lotSqFt = updateData.lotSqFt;
+  if (updateData.lotSqFt !== undefined)
+    propertyUpdateData.lotSqFt = updateData.lotSqFt;
 
   const result = await updatePropertyDraftDAL(propertyId, propertyUpdateData);
 
@@ -385,7 +415,7 @@ const unitDataSchema = z.object({
   unitNumber: z
     .string()
     .transform((val) => val.trim())
-    .transform((val) => val || "Unit 1"), // Auto-generate "Unit 1" if empty
+    .transform((val) => val || "Main Unit"), // Auto-generate "Main Unit" if empty
   bedrooms: z.string().min(1),
   bathrooms: z.string().min(1),
   rentAmount: z.string().trim(),
