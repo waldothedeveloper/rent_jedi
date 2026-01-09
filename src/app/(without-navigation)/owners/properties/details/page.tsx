@@ -1,6 +1,7 @@
-import PropertyDetails from "./property-details";
-import { getPropertyByIdDAL } from "@/dal/properties";
 import { AddUnitForm } from "./add-unit-form";
+import { MultiUnitDetails } from "./multi-unit-details";
+import { SingleUnitDetails } from "./single-unit-details";
+import { getPropertyByIdDAL } from "@/dal/properties";
 
 export default async function PropertyDetailsPage({
   searchParams,
@@ -26,5 +27,10 @@ export default async function PropertyDetailsPage({
     );
   }
 
-  return <PropertyDetails property={data} />;
+  // Conditional rendering based on unit type
+  return data.unitType === "multi_unit" ? (
+    <MultiUnitDetails property={data} />
+  ) : (
+    <SingleUnitDetails property={data} />
+  );
 }
