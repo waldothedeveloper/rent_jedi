@@ -16,7 +16,6 @@ import {
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-// Schema for creating units
 const unitInputSchema = z.object({
   unitNumber: z.string().trim(),
   bedrooms: z.string().min(1),
@@ -51,7 +50,6 @@ export const createProperty = async (input: CreatePropertyInput) => {
     };
   }
 
-  // Transform form data to match database schema (validation and transformation already handled by schema)
   const propertyData = {
     ownerId: userSession.session.userId,
     name: data.name,
@@ -93,14 +91,12 @@ export const listProperties = async () => {
   return properties;
 };
 
-// Helper function to convert bedroom values
 const convertBedrooms = (value: string): number => {
   if (value === "studio") return 0;
   if (value === "12+") return 12;
   return Number(value);
 };
 
-// Helper function to convert bathroom values
 const convertBathrooms = (value: string): number => {
   if (value === "12+") return 12;
   return Number(value);
@@ -124,7 +120,6 @@ export const createUnits = async (input: CreateUnitsInput) => {
     };
   }
 
-  // Transform form data to match database schema
   const unitsData = data.units.map((unit) => ({
     propertyId: data.propertyId,
     unitNumber: unit.unitNumber,
@@ -136,7 +131,6 @@ export const createUnits = async (input: CreateUnitsInput) => {
       : undefined,
   }));
 
-  // Call DAL function to insert units
   const result = await createUnitsDAL(unitsData);
 
   if (!result.success) {
@@ -359,8 +353,6 @@ export const updatePropertyDraft = async (
   }
 
   const { propertyId, ...updateData } = data;
-
-  // Transform the data for database (validation and transformation already handled by schema)
   const propertyUpdateData: Record<string, unknown> = {};
 
   if (updateData.unitType !== undefined)
