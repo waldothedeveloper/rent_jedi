@@ -10,14 +10,13 @@ export const formattedPhoneRegex = /^\(\d{3}\) \d{3} - \d{4}$/;
 
 // Optional string that becomes undefined when empty
 const optionalString = () =>
-  z.string().trim().transform((val) => val || undefined);
+  z
+    .string()
+    .trim()
+    .transform((val) => val || undefined);
 
 // Required string (already trimmed by Zod)
 const requiredString = () => z.string().trim();
-
-// String with default value
-const stringWithDefault = (defaultValue: string) =>
-  z.string().trim().transform((val) => val || defaultValue);
 
 // Phone field with E.164 transformation
 const phoneField = () =>
@@ -99,6 +98,16 @@ export const toE164Phone = (value?: string | null) => {
     return `+${digits}`;
   }
   return trimmed;
+};
+
+export const formatPhoneFromE164 = (phone: string | null): string => {
+  if (!phone) return "";
+  // If it's E.164 format like +11234567890, convert to (123) 456 - 7890
+  if (phone.startsWith("+1") && phone.length === 12) {
+    const digits = phone.slice(2);
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)} - ${digits.slice(6)}`;
+  }
+  return phone;
 };
 
 export const formatLabel = (value: string) =>
@@ -210,6 +219,85 @@ export const usStateOptions = [
 ] as const;
 
 export type USStateOption = (typeof usStateOptions)[number];
+
+// Property status options for select dropdowns
+export const propertyStatusOptions = [
+  "draft",
+  "active",
+  "coming_soon",
+  "archived",
+] as const;
+
+export type PropertyStatus = (typeof propertyStatusOptions)[number];
+
+// Property status options with labels for UI select components
+export const propertyStatusSelectOptions = [
+  { value: "draft", label: "Draft" },
+  { value: "active", label: "Active" },
+  { value: "coming_soon", label: "Coming Soon" },
+  { value: "archived", label: "Archived" },
+] as const;
+
+// Bedroom options for select dropdowns
+export const bedroomOptions = [
+  { value: "studio", label: "Studio" },
+  { value: "1", label: "1" },
+  { value: "2", label: "2" },
+  { value: "3", label: "3" },
+  { value: "4", label: "4" },
+  { value: "5", label: "5" },
+  { value: "6", label: "6" },
+  { value: "7", label: "7" },
+  { value: "8", label: "8" },
+  { value: "9", label: "9" },
+  { value: "10", label: "10" },
+  { value: "11", label: "11" },
+  { value: "12+", label: "+12" },
+] as const;
+
+// Bathroom options for select dropdowns
+export const bathroomOptions = [
+  { value: "0", label: "0" },
+  { value: "1", label: "1" },
+  { value: "1.5", label: "1.5" },
+  { value: "2", label: "2" },
+  { value: "2.5", label: "2.5" },
+  { value: "3", label: "3" },
+  { value: "3.5", label: "3.5" },
+  { value: "4", label: "4" },
+  { value: "4.5", label: "4.5" },
+  { value: "5", label: "5" },
+  { value: "5.5", label: "5.5" },
+  { value: "6", label: "6" },
+  { value: "6.5", label: "6.5" },
+  { value: "7", label: "7" },
+  { value: "7.5", label: "7.5" },
+  { value: "8", label: "8" },
+  { value: "8.5", label: "8.5" },
+  { value: "9", label: "9" },
+  { value: "9.5", label: "9.5" },
+  { value: "10", label: "10" },
+  { value: "10.5", label: "10.5" },
+  { value: "11", label: "11" },
+  { value: "11.5", label: "11.5" },
+  { value: "12+", label: "+12" },
+] as const;
+
+// Convert bedrooms number to string for form display
+export const bedroomsToString = (bedrooms: number | null): string => {
+  if (bedrooms === null) return "";
+  if (bedrooms === 0) return "studio";
+  if (bedrooms >= 12) return "12+";
+  return bedrooms.toString();
+};
+
+// Convert bathrooms number to string for form display
+export const bathroomsToString = (bathrooms: string | null): string => {
+  if (!bathrooms) return "";
+  const num = parseFloat(bathrooms);
+  if (num >= 12) return "12+";
+  return bathrooms;
+};
 
 export const propertyFormSchema = z.object({
   // Required strings

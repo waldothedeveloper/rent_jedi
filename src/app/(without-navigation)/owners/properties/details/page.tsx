@@ -1,4 +1,3 @@
-import { AddUnitForm } from "./add-unit-form";
 import { MultiUnitDetails } from "./multi-unit-details";
 import { SingleUnitDetails } from "./single-unit-details";
 import { getPropertyByIdDAL } from "@/dal/properties";
@@ -15,14 +14,6 @@ export default async function PropertyDetailsPage({
     return (
       <div className="text-center text-destructive">
         Error: {message || "Property not found."}
-      </div>
-    );
-  }
-
-  if (!data.units.length) {
-    return (
-      <div className="container max-w-4xl mx-auto py-8">
-        <AddUnitForm propertyId={id as string} />
       </div>
     );
   }

@@ -1,17 +1,27 @@
 "use client";
 
-import { useMemo } from "react";
 import {
   BadgeCheckIcon,
   MapPin,
   Pencil,
   Send,
+  Settings,
   Share2,
   Trash2,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
 import { property } from "@/db/schema/properties-schema";
+import { useMemo } from "react";
 
 type PropertyActionsProps = {
   property: typeof property.$inferSelect;
@@ -103,35 +113,83 @@ export function PropertyActions({ property }: PropertyActionsProps) {
       <Separator orientation="horizontal" className="h-5" />
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-8">
+          {/* Navigation for small screens */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="md:hidden">
+                <Settings className="size-4" />
+                <span className="sr-only">Open menu</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link
+                  href={`/owners/properties/details/edit?id=${property.id}`}
+                  className="flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Pencil className="size-4" />
+                  Edit
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link
+                  href="#"
+                  className="flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Trash2 className="size-4" />
+                  Delete
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link
+                  href="#"
+                  className="flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Send className="size-4" />
+                  Publish
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link
+                  href="#"
+                  className="flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Share2 className="size-4" />
+                  Share
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {/* Navigation for bigger screens */}
           <nav className="hidden md:flex gap-6 text-sm">
-            <a
-              href="#"
+            <Link
+              href={`/owners/properties/details/edit?id=${property.id}`}
               className="hover:text-muted-foreground flex items-center gap-1.5"
             >
               <Pencil className="size-4" />
               Edit
-            </a>
-            <a
+            </Link>
+            <Link
               href="#"
               className="hover:text-muted-foreground flex items-center gap-1.5"
             >
               <Trash2 className="size-4" />
               Delete
-            </a>
-            <a
+            </Link>
+            <Link
               href="#"
               className="hover:text-muted-foreground flex items-center gap-1.5"
             >
               <Send className="size-4" />
               Publish
-            </a>
-            <a
+            </Link>
+            <Link
               href="#"
               className="hover:text-muted-foreground flex items-center gap-1.5"
             >
               <Share2 className="size-4" />
               Share
-            </a>
+            </Link>
           </nav>
         </div>
         <PropertyAddress {...addressData} />

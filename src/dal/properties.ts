@@ -376,7 +376,8 @@ export const createUnitsDAL = cache(
         data: createdUnits,
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
 
       // Detect unique constraint violations
       if (
@@ -429,7 +430,6 @@ export const updatePropertyDraftDAL = cache(
     }
 
     try {
-      // First verify the property belongs to this user
       const existingProperty = await db
         .select()
         .from(property)
