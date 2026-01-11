@@ -338,11 +338,7 @@ export default function EditPropertyForm({
                       value={field.state.value ?? ""}
                       onValueChange={(value) =>
                         field.handleChange(
-                          value as
-                            | "draft"
-                            | "active"
-                            | "coming_soon"
-                            | "archived"
+                          value as "draft" | "live" | "paused" | "rented"
                         )
                       }
                     >

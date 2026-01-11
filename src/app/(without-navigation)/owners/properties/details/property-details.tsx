@@ -37,9 +37,9 @@ const propertyTypeLabels: Record<string, string> = {
 
 const statusColors = {
   draft: "bg-gray-500",
-  active: "bg-green-500",
-  coming_soon: "bg-blue-500",
-  archived: "bg-red-500",
+  live: "bg-green-500",
+  paused: "bg-blue-500",
+  rented: "bg-purple-500",
 };
 
 export default function PropertyDetails({ property }: PropertyDetailsProps) {

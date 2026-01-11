@@ -223,9 +223,9 @@ export type USStateOption = (typeof usStateOptions)[number];
 // Property status options for select dropdowns
 export const propertyStatusOptions = [
   "draft",
-  "active",
-  "coming_soon",
-  "archived",
+  "live",
+  "paused",
+  "rented",
 ] as const;
 
 export type PropertyStatus = (typeof propertyStatusOptions)[number];
@@ -233,9 +233,9 @@ export type PropertyStatus = (typeof propertyStatusOptions)[number];
 // Property status options with labels for UI select components
 export const propertyStatusSelectOptions = [
   { value: "draft", label: "Draft" },
-  { value: "active", label: "Active" },
-  { value: "coming_soon", label: "Coming Soon" },
-  { value: "archived", label: "Archived" },
+  { value: "live", label: "Live" },
+  { value: "paused", label: "Paused" },
+  { value: "rented", label: "Rented" },
 ] as const;
 
 // Bedroom options for select dropdowns

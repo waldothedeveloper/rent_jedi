@@ -447,9 +447,9 @@ export const completeSingleUnitProperty = async (
 
   const { propertyId, unitData } = data;
 
-  // First, update the property status to active
+  // First, update the property status to live
   const propertyResult = await updatePropertyDraftDAL(propertyId, {
-    propertyStatus: "active",
+    propertyStatus: "live",
   });
 
   if (!propertyResult.success) {
@@ -524,9 +524,9 @@ export const completeMultiUnitProperty = async (
 
   const { propertyId, units } = data;
 
-  // First, update the property status to active
+  // First, update the property status to live
   const propertyResult = await updatePropertyDraftDAL(propertyId, {
-    propertyStatus: "active",
+    propertyStatus: "live",
   });
 
   if (!propertyResult.success) {
