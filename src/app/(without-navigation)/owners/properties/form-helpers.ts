@@ -332,7 +332,7 @@ export const propertyFormSchema = z.object({
     .string()
     .trim()
     .transform((val) => val || undefined)
-    .pipe(z.union([z.undefined(), z.string().email("Enter a valid email.")])),
+    .pipe(z.union([z.undefined(), z.email("Enter a valid email.")])),
 
   // Phone with E.164 transformation
   contactPhone: phoneField(),
@@ -364,6 +364,7 @@ export const propertyNameFormSchema = z.object({
   name: requiredString()
     .min(1, "Property name is required.")
     .max(200, "Keep the name under 200 characters."),
+  propertyType: propertyFormSchema.shape.propertyType,
   description: optionalString().refine(
     (val) => !val || val.length <= 2000,
     "Keep the description under 2000 characters."

@@ -10,13 +10,22 @@ import {
 } from "@/components/ui/field";
 import {
   controlClassName,
+  formatLabel,
   propertyNameFormSchema,
+  propertyTypeOptions,
 } from "@/app/(without-navigation)/owners/properties/form-helpers";
 import { revalidateLogic, useForm } from "@tanstack/react-form";
 
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { property } from "@/db/schema/properties-schema";
@@ -52,8 +61,16 @@ export default function PropertyNameAndDescriptionForm({
     return "";
   });
 
+  const [propertyTypeFromStorage] = useState(() => {
+    if (typeof window !== "undefined" && !isEditMode) {
+      return localStorage.getItem("draft-property-type") || undefined;
+    }
+    return undefined;
+  });
+
   const defaultValues = {
     name: initialData?.name || nameFromStorage || "",
+    propertyType: initialData?.propertyType ?? propertyTypeFromStorage,
     description: initialData?.description || descriptionFromStorage || "",
   };
 
@@ -72,6 +89,10 @@ export default function PropertyNameAndDescriptionForm({
 
       try {
         localStorage.setItem("draft-property-name", value.name);
+        localStorage.setItem(
+          "draft-property-type",
+          value.propertyType ?? ""
+        );
         localStorage.setItem(
           "draft-property-description",
           value.description || ""
@@ -152,6 +173,53 @@ export default function PropertyNameAndDescriptionForm({
                       placeholder="Enter property name"
                       autoFocus
                     />
+                    <FieldError errors={field.state.meta.errors} />
+                  </Field>
+                )}
+              />
+
+              {/* Property Type Field */}
+              <form.Field
+                name="propertyType"
+                children={(field) => (
+                  <Field>
+                    <FieldLabel
+                      htmlFor={field.name}
+                      className={
+                        field.state.meta.errors.length > 0
+                          ? "text-destructive"
+                          : ""
+                      }
+                    >
+                      Property Type{" "}
+                      <span className="text-muted-foreground">(optional)</span>
+                    </FieldLabel>
+                    <FieldDescription>
+                      Choose the type that best describes your property.
+                    </FieldDescription>
+                    <Select
+                      value={field.state.value ?? ""}
+                      onValueChange={(value) => field.handleChange(value)}
+                    >
+                      <SelectTrigger
+                        id={field.name}
+                        className={cn(
+                          "w-full",
+                          field.state.meta.errors.length > 0 &&
+                            "border-destructive"
+                        )}
+                        onBlur={field.handleBlur}
+                      >
+                        <SelectValue placeholder="Select property type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {propertyTypeOptions.map((type) => (
+                          <SelectItem key={type} value={type}>
+                            {formatLabel(type)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FieldError errors={field.state.meta.errors} />
                   </Field>
                 )}
