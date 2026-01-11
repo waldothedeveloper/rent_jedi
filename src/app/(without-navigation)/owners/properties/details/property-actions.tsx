@@ -1,6 +1,15 @@
 "use client";
 
 import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   BadgeCheckIcon,
   MapPin,
   Pencil,
@@ -15,13 +24,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
+import { deleteProperty } from "@/app/actions/properties";
 import { property } from "@/db/schema/properties-schema";
-import { useMemo } from "react";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 type PropertyActionsProps = {
   property: typeof property.$inferSelect;
@@ -83,6 +95,10 @@ function PropertyAddress({
 }
 
 export function PropertyActions({ property }: PropertyActionsProps) {
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const router = useRouter();
+
   const addressData = useMemo(
     () => ({
       addressLine1: property.addressLine1,
@@ -108,6 +124,29 @@ export function PropertyActions({ property }: PropertyActionsProps) {
     ]
   );
 
+  const handleDelete = async () => {
+    setIsDeleting(true);
+
+    try {
+      const result = await deleteProperty(property.id);
+
+      if (!result.success) {
+        toast.error(result.message || "Failed to delete property");
+        return;
+      }
+
+      toast.success("Property deleted successfully");
+      setDeleteDialogOpen(false);
+
+      // Redirect to properties list after successful deletion
+      router.push("/owners/properties");
+    } catch (error) {
+      toast.error("An unexpected error occurred");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <header>
       <Separator orientation="horizontal" className="h-5" />
@@ -131,14 +170,14 @@ export function PropertyActions({ property }: PropertyActionsProps) {
                   Edit
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link
-                  href="#"
-                  className="flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Trash2 className="size-4" />
-                  Delete
-                </Link>
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault();
+                  setDeleteDialogOpen(true);
+                }}
+              >
+                <Trash2 className="size-4" />
+                Delete
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link
@@ -169,13 +208,13 @@ export function PropertyActions({ property }: PropertyActionsProps) {
               <Pencil className="size-4" />
               Edit
             </Link>
-            <Link
-              href="#"
+            <button
+              onClick={() => setDeleteDialogOpen(true)}
               className="hover:text-muted-foreground flex items-center gap-1.5"
             >
               <Trash2 className="size-4" />
               Delete
-            </Link>
+            </button>
             <Link
               href="#"
               className="hover:text-muted-foreground flex items-center gap-1.5"
@@ -194,6 +233,30 @@ export function PropertyActions({ property }: PropertyActionsProps) {
         </div>
         <PropertyAddress {...addressData} />
       </div>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Property?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete{" "}
+              <strong>{property.name + "property" || "this property"}</strong>{" "}
+              and all associated units, tenants, payments, and maintenance
+              records. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Yes, delete my property"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </header>
   );
 }
