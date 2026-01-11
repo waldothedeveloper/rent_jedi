@@ -39,6 +39,32 @@ npm run lint                   # Run ESLint
 - **Server Actions** for all mutations (in `/src/app/actions/`)
 - **API Routes** only for Better Auth handler and email sending
 
+### Next.js Route Files
+
+Every Next.js App Router route should include:
+
+- **error.tsx** - Error boundary for route-level error handling
+  - Must be a Client Component (`"use client"`)
+  - Should use shared error component when available
+  - Provide context-specific error messages
+
+- **loading.tsx** - Loading UI displayed during async operations
+  - Should be a Server Component (no "use client")
+  - Mirror the actual page layout with skeleton components
+  - Use `@/components/ui/skeleton` from shadcn/ui
+  - Match dimensions: h-4 for labels, h-9/h-10 for inputs, h-8 for titles
+
+**Example Structure:**
+```
+/route-name/
+  ├── page.tsx       # Route component
+  ├── error.tsx      # Error boundary
+  ├── loading.tsx    # Loading state
+  └── layout.tsx     # Optional layout
+```
+
+**Reference Implementation:** `/src/app/(without-navigation)/owners/properties/add-property/`
+
 ### Authentication Flow
 
 ```

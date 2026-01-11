@@ -748,3 +748,30 @@ export const updateMultipleUnits = async (
     };
   }
 };
+
+export const deleteProperty = async (
+  propertyId: string
+): Promise<{
+  success: boolean;
+  message?: string;
+}> => {
+  const { deletePropertyDAL } = await import("@/dal/properties");
+
+  const result = await deletePropertyDAL(propertyId);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message || "Failed to delete property",
+    };
+  }
+
+  // Revalidate paths to update UI
+  revalidatePath("/owners/properties");
+  revalidatePath("/owners/dashboard");
+
+  return {
+    success: true,
+    message: "Property deleted successfully",
+  };
+};

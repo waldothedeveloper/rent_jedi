@@ -105,6 +105,20 @@ export const canUpdateProperty = cache(async (userId: string, role: Roles) => {
   return permissionCheck.success;
 });
 
+export const canDeleteProperty = cache(async (userId: string, role: Roles) => {
+  const permissionCheck = await auth.api.userHasPermission({
+    body: {
+      userId,
+      role,
+      permission: {
+        property: ["delete"],
+      },
+    },
+  });
+
+  return permissionCheck.success;
+});
+
 /*
 
 ONLY DAL FUNCTIONS BELOW
@@ -731,6 +745,74 @@ export const updateUnitDAL = cache(
           error instanceof Error
             ? error.message
             : "Failed to update unit. Please try again.",
+      };
+    }
+  }
+);
+
+export const deletePropertyDAL = cache(
+  async (
+    propertyId: string
+  ): Promise<{
+    success: boolean;
+    message?: string;
+  }> => {
+    const session = await verifySessionDAL();
+
+    if (!session) {
+      return {
+        success: false,
+        message:
+          "⛔️ Access Denied. You must be signed in to delete a property.",
+      };
+    }
+
+    if (
+      !(await canDeleteProperty(session.user.id, session.user.role as Roles))
+    ) {
+      return {
+        success: false,
+        message:
+          "⛔️ Access Denied. You do not have permission to delete a property.",
+      };
+    }
+
+    try {
+      const existingProperty = await db
+        .select()
+        .from(property)
+        .where(eq(property.id, propertyId))
+        .limit(1)
+        .then((rows) => rows[0]);
+
+      if (!existingProperty) {
+        return {
+          success: false,
+          message:
+            "The property you are trying to delete does not exist or does not belong to this user.",
+        };
+      }
+
+      if (existingProperty.ownerId !== session.user.id) {
+        return {
+          success: false,
+          message:
+            "⛔️ Access Denied. You do not have permission to delete this property.",
+        };
+      }
+
+      await db.delete(property).where(eq(property.id, propertyId));
+
+      return {
+        success: true,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to delete property. Please try again.",
       };
     }
   }
