@@ -157,6 +157,7 @@ const createPropertyDraftSchema = addressFormSchema.extend({
     .trim()
     .transform((val) => val || undefined)
     .optional(),
+  propertyType: propertyFormSchema.shape.propertyType.optional(),
 });
 
 export const createPropertyDraft = async (
@@ -199,6 +200,7 @@ export const createPropertyDraft = async (
     country: parsedData.country,
     name: parsedData.name,
     description: parsedData.description,
+    propertyType: parsedData.propertyType,
   };
 
   const result = await createPropertyDAL(propertyData);
@@ -299,7 +301,7 @@ const updatePropertyDraftSchema = z.object({
     .string()
     .trim()
     .transform((val) => val || undefined)
-    .pipe(z.union([z.undefined(), z.string().email()]))
+    .pipe(z.union([z.undefined(), z.email()]))
     .optional(),
   contactPhone: z
     .string()

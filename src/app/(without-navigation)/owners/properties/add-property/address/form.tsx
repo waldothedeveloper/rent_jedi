@@ -16,6 +16,8 @@ import {
 import {
   addressFormSchema,
   controlClassName,
+  propertyTypeOptions,
+  type PropertyType,
   usStateOptions,
 } from "@/app/(without-navigation)/owners/properties/form-helpers";
 import {
@@ -55,14 +57,24 @@ export default function AddPropertyAddressForm({
   const [nameFromStorage, setNameFromStorage] = useState<string>("");
   const [descriptionFromStorage, setDescriptionFromStorage] =
     useState<string>("");
+  const [propertyTypeFromStorage, setPropertyTypeFromStorage] = useState<
+    PropertyType | undefined
+  >(undefined);
 
   // Read name and description from localStorage on mount
   useEffect(() => {
     const name = localStorage.getItem("draft-property-name") || "";
     const description =
       localStorage.getItem("draft-property-description") || "";
+    const propertyType = localStorage.getItem("draft-property-type");
+    const parsedPropertyType = propertyTypeOptions.includes(
+      propertyType as PropertyType
+    )
+      ? (propertyType as PropertyType)
+      : undefined;
     setNameFromStorage(name);
     setDescriptionFromStorage(description);
+    setPropertyTypeFromStorage(parsedPropertyType);
   }, []);
 
   const defaultValues = {
@@ -96,11 +108,15 @@ export default function AddPropertyAddressForm({
       );
     } else {
       // Create new draft with address + name/description from localStorage
+      const addressPayload = normalizedAddress as z.infer<
+        typeof addressFormSchema
+      >;
       const result = await createPropertyDraft({
-        ...normalizedAddress,
+        ...addressPayload,
         name: nameFromStorage,
         description: descriptionFromStorage || undefined,
-      } as z.infer<typeof addressFormSchema>);
+        propertyType: propertyTypeFromStorage,
+      });
 
       if (!result.success) {
         throw new Error(result.message || "Failed to save address");
@@ -109,6 +125,7 @@ export default function AddPropertyAddressForm({
       // Clear localStorage after successful draft creation
       localStorage.removeItem("draft-property-name");
       localStorage.removeItem("draft-property-description");
+      localStorage.removeItem("draft-property-type");
 
       toast.success("Address saved! Moving to next step...");
       router.push(

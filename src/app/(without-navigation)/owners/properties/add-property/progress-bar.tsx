@@ -1,7 +1,8 @@
 "use client";
 
+import { usePathname, useSearchParams } from "next/navigation";
+
 import Link from "next/link";
-import { useSearchParams, usePathname } from "next/navigation";
 
 type StepStatus = "complete" | "current" | "upcoming";
 
@@ -70,7 +71,7 @@ export default function AddPropertyProgressBar() {
     },
     {
       id: "Step 3",
-      name: "Property Type",
+      name: "Unit Type",
       href: propertyId
         ? `/owners/properties/add-property/property-type?propertyId=${propertyId}&completedSteps=${completedSteps}${unitType ? `&unitType=${unitType}` : ""}`
         : "#",
