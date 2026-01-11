@@ -16,9 +16,9 @@ import { user } from "./auth-schema";
 
 export const propertyStatusEnum = pgEnum("property_status", [
   "draft",
-  "active",
-  "coming_soon",
-  "archived",
+  "live",
+  "paused",
+  "rented",
 ]);
 
 export const propertyTypeEnum = pgEnum("property_type", [
