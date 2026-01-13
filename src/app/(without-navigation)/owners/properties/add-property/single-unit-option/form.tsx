@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { bathroomOptions, bedroomOptions } from "@/utils/form-helpers";
 import {
   completeSingleUnitProperty,
   updateUnit,
@@ -32,10 +33,6 @@ import { toast } from "sonner";
 import { unit } from "@/db/schema/units-schema";
 import { useState } from "react";
 import { z } from "zod";
-import {
-  bathroomOptions,
-  bedroomOptions,
-} from "@/app/(without-navigation)/owners/properties/form-helpers";
 
 // Schema for single-unit property completion
 const singleUnitSchema = z.object({

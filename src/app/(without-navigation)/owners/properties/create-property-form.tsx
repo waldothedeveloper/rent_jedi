@@ -9,6 +9,7 @@ import {
   FieldLegend,
   FieldSet,
 } from "@/components/ui/field";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   PropertyType,
   controlClassName,
@@ -19,16 +20,18 @@ import {
   propertyTypeOptions,
   unitTypeOptions,
   usStateOptions,
-} from "./form-helpers";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+} from "@/utils/form-helpers";
 import { revalidateLogic, useForm } from "@tanstack/react-form";
 
-import { ArrowUpRight } from "lucide-react";
+import {
+  createProperty,
+  type CreatePropertyInput,
+} from "@/app/actions/properties";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { createProperty, type CreatePropertyInput } from "@/app/actions/properties";
+import { ArrowUpRight } from "lucide-react";
 import { toast } from "sonner";
 
 export function CreatePropertyForm({
@@ -66,7 +69,9 @@ export function CreatePropertyForm({
     },
     onSubmit: async ({ value, formApi }) => {
       // Type assertion is safe here because TanStack Form validates with the schema before calling onSubmit
-      const response = await createProperty(value as unknown as CreatePropertyInput);
+      const response = await createProperty(
+        value as unknown as CreatePropertyInput
+      );
 
       if (!response.success) {
         toast.error(response.message || "Failed to create property");

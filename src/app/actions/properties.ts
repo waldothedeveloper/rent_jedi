@@ -4,10 +4,11 @@ import {
   addressFormSchema,
   propertyFormSchema,
   toE164Phone,
-} from "@/app/(without-navigation)/owners/properties/form-helpers";
+} from "@/utils/form-helpers";
 import {
   createPropertyDAL,
   createUnitsDAL,
+  getAvailableUnitsByPropertyDAL,
   listPropertiesDAL,
   updatePropertyDraftDAL,
   verifySessionDAL,
@@ -775,5 +776,15 @@ export const deleteProperty = async (
   return {
     success: true,
     message: "Property deleted successfully",
+  };
+};
+
+export const getAvailableUnitsByProperty = async (propertyId: string) => {
+  const result = await getAvailableUnitsByPropertyDAL(propertyId);
+
+  return {
+    success: result.success,
+    units: result.data || [],
+    message: result.message,
   };
 };

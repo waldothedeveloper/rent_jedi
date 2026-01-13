@@ -1,10 +1,6 @@
 "use client";
 
 import {
-  unitTypeOptions,
-  type UnitType,
-} from "@/app/(without-navigation)/owners/properties/form-helpers";
-import {
   Field,
   FieldDescription,
   FieldError,
@@ -12,6 +8,7 @@ import {
   FieldLabel,
   FieldSet,
 } from "@/components/ui/field";
+import { unitTypeOptions, type UnitType } from "@/utils/form-helpers";
 import { revalidateLogic, useForm } from "@tanstack/react-form";
 
 import { updatePropertyDraft } from "@/app/actions/properties";

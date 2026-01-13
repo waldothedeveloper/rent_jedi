@@ -101,6 +101,48 @@ User (Owner)
 4. Show feedback with Sonner toast notifications
 5. Use DAL (Data Access Layer) functions in `/src/dal/` for DB operations
 
+### useEffect Guidelines
+
+**Avoid `useEffect` for form field dependencies and state updates.** The author strongly prefers avoiding `useEffect` unless absolutely necessary.
+
+**Preferred patterns:**
+
+1. **Inline handlers for dependent field updates:**
+   ```typescript
+   <Select
+     value={field.state.value}
+     onValueChange={(value) => {
+       field.handleChange(value);
+       form.setFieldValue("dependentField", ""); // Reset dependent field
+     }}
+   >
+   ```
+
+2. **Extract handler functions for complex logic:**
+   ```typescript
+   const handleFieldChange = async (value: string) => {
+     field.handleChange(value);
+     form.setFieldValue("dependentField", "");
+     await fetchData(value); // Async operations
+   };
+   ```
+
+3. **Use refs to track state without causing re-renders:**
+   ```typescript
+   const lastFetchedId = useRef<string | null>(null);
+   ```
+
+**Only acceptable `useEffect` uses:**
+- Initial data load from localStorage (runs once on mount with empty deps)
+- Cleanup functions for event listeners
+- True side effects that can't be expressed inline
+
+**Never use `useEffect` for:**
+- Form field dependencies
+- Fetching data when a field changes (use inline handlers)
+- Resetting fields when another field changes
+- Validation triggers (use Zod schema with `onDynamic` validator)
+
 ### Database Schema Location
 
 All schemas in `/src/db/schema/`:

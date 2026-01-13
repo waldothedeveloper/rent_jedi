@@ -9,69 +9,45 @@ import {
   FieldSet,
 } from "@/components/ui/field";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  createTenantDraft,
+  updateTenantDraftBasicInfo,
+} from "@/app/actions/tenants";
 import {
-  controlClassName,
-  formatLabel,
-  propertyNameFormSchema,
-  propertyTypeOptions,
+  formatPhoneFromE164,
+  formatToPhone,
+  tenantBasicInfoSchema,
 } from "@/utils/form-helpers";
 import { revalidateLogic, useForm } from "@tanstack/react-form";
 
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { property } from "@/db/schema/properties-schema";
+import { tenant } from "@/db/schema/tenants-schema";
+import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-interface PropertyNameAndDescriptionFormProps {
-  propertyId?: string;
-  initialData?: typeof property.$inferSelect | null;
+interface TenantBasicInfoFormProps {
+  tenantId?: string;
+  initialData?: typeof tenant.$inferSelect | null;
 }
 
-export default function PropertyNameAndDescriptionForm({
-  propertyId,
+export default function TenantBasicInfoForm({
+  tenantId,
   initialData,
-}: PropertyNameAndDescriptionFormProps) {
+}: TenantBasicInfoFormProps) {
   const router = useRouter();
-  const isEditMode = !!propertyId && !!initialData;
+  const isEditMode = !!tenantId && !!initialData;
   const [formError, setFormError] = useState<string | null>(null);
-
-  // Read from localStorage using lazy initialization (runs once on mount)
-  // This ensures the form gets the localStorage values on first render
-  const [nameFromStorage] = useState(() => {
-    if (typeof window !== "undefined" && !isEditMode) {
-      return localStorage.getItem("draft-property-name") || "";
-    }
-    return "";
-  });
-
-  const [descriptionFromStorage] = useState(() => {
-    if (typeof window !== "undefined" && !isEditMode) {
-      return localStorage.getItem("draft-property-description") || "";
-    }
-    return "";
-  });
-
-  const [propertyTypeFromStorage] = useState(() => {
-    if (typeof window !== "undefined" && !isEditMode) {
-      return localStorage.getItem("draft-property-type") || undefined;
-    }
-    return undefined;
-  });
+  const [firstName, ...lastNameParts] = initialData?.name?.split(" ") || [""];
+  const lastName = lastNameParts.join(" ");
 
   const defaultValues = {
-    name: initialData?.name || nameFromStorage || "",
-    propertyType: initialData?.propertyType ?? propertyTypeFromStorage,
-    description: initialData?.description || descriptionFromStorage || "",
+    firstName: initialData?.name ? firstName : "",
+    lastName: initialData?.name ? lastName : "",
+    email: initialData?.email || "",
+    phone: initialData?.phone ? formatPhoneFromE164(initialData.phone) : "",
   };
 
   const form = useForm({
@@ -81,33 +57,43 @@ export default function PropertyNameAndDescriptionForm({
       modeAfterSubmission: "blur",
     }),
     validators: {
-      onSubmit: propertyNameFormSchema,
-      onDynamic: propertyNameFormSchema,
+      onSubmit: tenantBasicInfoSchema,
+      onDynamic: tenantBasicInfoSchema,
     },
     onSubmit: async ({ value }) => {
       setFormError(null);
 
       try {
-        localStorage.setItem("draft-property-name", value.name);
-        localStorage.setItem("draft-property-type", value.propertyType ?? "");
-        localStorage.setItem(
-          "draft-property-description",
-          value.description || ""
-        );
+        let newTenant;
 
-        if (isEditMode && propertyId) {
-          router.push(
-            `/owners/properties/add-property/address?propertyId=${propertyId}&completedSteps=1`
-          );
+        if (isEditMode && tenantId) {
+          let updateTenant = await updateTenantDraftBasicInfo(tenantId, value);
+          if (!updateTenant.success) {
+            setFormError(updateTenant.message || "Failed to update tenant");
+            toast.error(updateTenant.message || "Failed to update tenant");
+            return;
+          }
         } else {
-          router.push("/owners/properties/add-property/address");
+          newTenant = await createTenantDraft(value);
+          if (!newTenant.success) {
+            setFormError(newTenant.message || "Failed to create tenant");
+            toast.error(newTenant.message || "Failed to create tenant");
+            return;
+          }
         }
+
+        toast.success("Tenant information saved!");
+
+        router.push(
+          `/owners/tenants/add-tenant/lease-dates?tenantId=${tenantId || newTenant?.tenantId}&completedSteps=1`
+        );
       } catch (error) {
         const errorMsg =
           error instanceof Error
             ? error.message
             : "Failed to proceed to next step";
         setFormError(errorMsg);
+        toast.error(errorMsg);
       }
     },
   });
@@ -116,11 +102,10 @@ export default function PropertyNameAndDescriptionForm({
     <div className="flex flex-col items-center justify-center gap-6 p-6 md:p-10 mt-12">
       <div className="flex w-full max-w-2xl flex-col gap-6">
         <div className="flex flex-col gap-2">
-          <h1 className="text-2xl font-semibold">
-            Property Name & Description
-          </h1>
+          <h1 className="text-2xl font-semibold">Tenant Information</h1>
           <p className="text-sm text-muted-foreground">
-            Let&apos;s start by giving your property a name and description.
+            Let&apos;s start by adding the tenant&apos;s basic contact
+            information.
           </p>
         </div>
 
@@ -134,9 +119,9 @@ export default function PropertyNameAndDescriptionForm({
         >
           <FieldGroup>
             <FieldSet className="gap-4">
-              {/* Property Name Field */}
+              {/* First Name */}
               <form.Field
-                name="name"
+                name="firstName"
                 children={(field) => (
                   <Field>
                     <FieldLabel
@@ -147,37 +132,29 @@ export default function PropertyNameAndDescriptionForm({
                           : ""
                       }
                     >
-                      Property Name <span className="text-destructive">*</span>
+                      First Name <span className="text-destructive">*</span>
                     </FieldLabel>
-                    <FieldDescription>
-                      Give your property a memorable name (e.g., &quot;Sunset
-                      Apartments&quot;, &quot;123 Main Street&quot;).
-                    </FieldDescription>
                     <Input
                       id={field.name}
-                      name={field.name}
-                      value={field.state.value ?? ""}
+                      value={field.state.value}
                       onBlur={field.handleBlur}
-                      onChange={(event) =>
-                        field.handleChange(event.target.value)
-                      }
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      placeholder="John"
+                      autoFocus
                       className={cn(
-                        controlClassName,
                         field.state.meta.errors.length > 0
                           ? "border-destructive"
                           : ""
                       )}
-                      placeholder="Enter property name"
-                      autoFocus
                     />
                     <FieldError errors={field.state.meta.errors} />
                   </Field>
                 )}
               />
 
-              {/* Property Type Field */}
+              {/* Last Name */}
               <form.Field
-                name="propertyType"
+                name="lastName"
                 children={(field) => (
                   <Field>
                     <FieldLabel
@@ -188,76 +165,82 @@ export default function PropertyNameAndDescriptionForm({
                           : ""
                       }
                     >
-                      Property Type{" "}
-                      <span className="text-muted-foreground">(optional)</span>
+                      Last Name <span className="text-destructive">*</span>
                     </FieldLabel>
-                    <FieldDescription>
-                      Choose the type that best describes your property.
-                    </FieldDescription>
-                    <Select
-                      value={field.state.value ?? ""}
-                      onValueChange={(value) => field.handleChange(value)}
-                    >
-                      <SelectTrigger
-                        id={field.name}
-                        className={cn(
-                          "w-full",
-                          field.state.meta.errors.length > 0 &&
-                            "border-destructive"
-                        )}
-                        onBlur={field.handleBlur}
-                      >
-                        <SelectValue placeholder="Select property type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {propertyTypeOptions.map((type) => (
-                          <SelectItem key={type} value={type}>
-                            {formatLabel(type)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Input
+                      id={field.name}
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      placeholder="Doe"
+                      className={cn(
+                        field.state.meta.errors.length > 0
+                          ? "border-destructive"
+                          : ""
+                      )}
+                    />
                     <FieldError errors={field.state.meta.errors} />
                   </Field>
                 )}
               />
 
-              {/* Property Description Field */}
+              {/* Email */}
               <form.Field
-                name="description"
+                name="email"
                 children={(field) => (
                   <Field>
-                    <FieldLabel
-                      htmlFor={field.name}
-                      className={
-                        field.state.meta.errors.length > 0
-                          ? "text-destructive"
-                          : ""
-                      }
-                    >
-                      Property Description{" "}
+                    <FieldLabel htmlFor={field.name}>
+                      Email{" "}
                       <span className="text-muted-foreground">(optional)</span>
                     </FieldLabel>
                     <FieldDescription>
-                      Add any details about the property that tenants should
-                      know (max 2000 characters).
+                      At least one of email or phone is required.
                     </FieldDescription>
-                    <Textarea
+                    <Input
                       id={field.name}
-                      name={field.name}
+                      type="email"
                       value={field.state.value || ""}
                       onBlur={field.handleBlur}
-                      onChange={(event) =>
-                        field.handleChange(event.target.value)
-                      }
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      placeholder="john.doe@example.com"
                       className={cn(
-                        controlClassName,
                         field.state.meta.errors.length > 0
                           ? "border-destructive"
                           : ""
                       )}
-                      placeholder="Enter property description (optional)"
-                      rows={4}
+                    />
+                    <FieldError errors={field.state.meta.errors} />
+                  </Field>
+                )}
+              />
+
+              {/* Phone */}
+              <form.Field
+                name="phone"
+                children={(field) => (
+                  <Field>
+                    <FieldLabel htmlFor={field.name}>
+                      Phone{" "}
+                      <span className="text-muted-foreground">(optional)</span>
+                    </FieldLabel>
+                    <FieldDescription>
+                      At least one of email or phone is required.
+                    </FieldDescription>
+                    <Input
+                      id={field.name}
+                      type="tel"
+                      value={field.state.value || ""}
+                      onBlur={field.handleBlur}
+                      onChange={(e) => {
+                        formatToPhone(e);
+                        field.handleChange(e.target.value);
+                      }}
+                      placeholder="(555) 555 - 5555"
+                      className={cn(
+                        field.state.meta.errors.length > 0
+                          ? "border-destructive"
+                          : ""
+                      )}
                     />
                     <FieldError errors={field.state.meta.errors} />
                   </Field>
@@ -287,7 +270,9 @@ export default function PropertyNameAndDescriptionForm({
                       disabled={!canSubmit || isSubmitting}
                       className="flex items-center justify-center gap-2"
                     >
-                      {isSubmitting ? "Processing..." : "Continue to Address"}
+                      {isSubmitting
+                        ? "Processing..."
+                        : "Continue to Lease Dates"}
                       <ArrowRight className="size-4 text-muted" />
                     </Button>
                   )}
