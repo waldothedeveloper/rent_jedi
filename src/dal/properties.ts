@@ -1,12 +1,14 @@
 "server only";
 
-import { count, eq, sql } from "drizzle-orm";
+import { and, count, eq, isNull, sql } from "drizzle-orm";
 
+import type { Roles } from "@/types/roles";
 import { auth } from "@/lib/auth";
 import { cache } from "react";
 import { db } from "@/db/drizzle";
 import { headers } from "next/headers";
 import { property } from "@/db/schema/properties-schema";
+import { tenant } from "@/db/schema/tenants-schema";
 import { unit } from "@/db/schema/units-schema";
 
 /*
@@ -14,8 +16,6 @@ import { unit } from "@/db/schema/units-schema";
 TYPE DEFINITIONS BELOW
 
 */
-
-type Roles = "admin" | "tenant" | "owner" | "manager" | undefined;
 
 type Property = typeof property.$inferInsert;
 type Unit = typeof unit.$inferInsert;
@@ -813,6 +813,146 @@ export const deletePropertyDAL = cache(
           error instanceof Error
             ? error.message
             : "Failed to delete property. Please try again.",
+      };
+    }
+  }
+);
+
+/**
+ * Get all properties with available unit counts for tenant creation dropdown
+ */
+export const getPropertiesWithAvailableUnitsDAL = cache(
+  async (): Promise<{
+    success: boolean;
+    data?: Array<{
+      property: typeof property.$inferSelect;
+      totalUnits: number;
+      availableUnits: number;
+    }>;
+    message?: string;
+  }> => {
+    const session = await verifySessionDAL();
+
+    if (!session) {
+      return {
+        success: false,
+        message: "⛔️ Access Denied.",
+      };
+    }
+
+    try {
+      const results = await db
+        .select({
+          property: property,
+          unitId: unit.id,
+          hasTenant: sql<boolean>`EXISTS (
+            SELECT 1 FROM tenant t
+            WHERE t.unit_id = ${unit.id}
+            AND t.lease_end_date IS NULL
+          )`,
+        })
+        .from(property)
+        .leftJoin(unit, eq(property.id, unit.propertyId))
+        .where(eq(property.ownerId, session.user.id));
+
+      // Group by property and calculate available units
+      const propertyMap = new Map();
+
+      results.forEach((row) => {
+        const propId = row.property.id;
+        if (!propertyMap.has(propId)) {
+          propertyMap.set(propId, {
+            property: row.property,
+            totalUnits: 0,
+            availableUnits: 0,
+          });
+        }
+
+        if (row.unitId) {
+          const data = propertyMap.get(propId);
+          data.totalUnits++;
+          if (!row.hasTenant) {
+            data.availableUnits++;
+          }
+        }
+      });
+
+      return {
+        success: true,
+        data: Array.from(propertyMap.values()),
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: "Failed to fetch properties.",
+      };
+    }
+  }
+);
+
+/**
+ * Get available units for a property (no active tenants)
+ */
+export const getAvailableUnitsByPropertyDAL = cache(
+  async (
+    propertyId: string
+  ): Promise<{
+    success: boolean;
+    data?: (typeof unit.$inferSelect)[];
+    message?: string;
+  }> => {
+    const session = await verifySessionDAL();
+
+    if (!session) {
+      return {
+        success: false,
+        message: "⛔️ Access Denied.",
+      };
+    }
+
+    try {
+      // Verify ownership
+      const propertyRecord = await db
+        .select()
+        .from(property)
+        .where(eq(property.id, propertyId))
+        .limit(1)
+        .then((rows) => rows[0]);
+
+      if (!propertyRecord) {
+        return {
+          success: false,
+          message: "Property not found.",
+        };
+      }
+
+      if (propertyRecord.ownerId !== session.user.id) {
+        return {
+          success: false,
+          message: "⛔️ Access Denied.",
+        };
+      }
+
+      // Get units without active tenants
+      const availableUnits = await db
+        .select({
+          unit: unit,
+        })
+        .from(unit)
+        .leftJoin(
+          tenant,
+          and(eq(unit.id, tenant.unitId), isNull(tenant.leaseEndDate))
+        )
+        .where(and(eq(unit.propertyId, propertyId), isNull(tenant.id)));
+
+      return {
+        success: true,
+        data: availableUnits.map((row) => row.unit),
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: "Failed to fetch available units.",
       };
     }
   }

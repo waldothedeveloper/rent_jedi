@@ -1,9 +1,9 @@
 "use client";
 
-import type {
-  AddressValidationSuccess,
-  NormalizedAddress,
-} from "@/types/google-maps";
+import {
+  createPropertyDraft,
+  updatePropertyDraft,
+} from "@/app/actions/properties";
 import {
   Field,
   FieldDescription,
@@ -13,30 +13,30 @@ import {
   FieldLegend,
   FieldSet,
 } from "@/components/ui/field";
+import type {
+  AddressValidationSuccess,
+  NormalizedAddress,
+} from "@/types/google-maps";
 import {
   addressFormSchema,
   controlClassName,
   propertyTypeOptions,
-  type PropertyType,
   usStateOptions,
-} from "@/app/(without-navigation)/owners/properties/form-helpers";
-import {
-  createPropertyDraft,
-  updatePropertyDraft,
-} from "@/app/actions/properties";
+  type PropertyType,
+} from "@/utils/form-helpers";
 import { revalidateLogic, useForm } from "@tanstack/react-form";
 import { useEffect, useState } from "react";
 
-import { AddressSelectionDialog } from "./address-selection-dialog";
-import { ArrowRight } from "lucide-react";
+import { validateAddress } from "@/app/actions/address-validation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
 import { property } from "@/db/schema/properties-schema";
-import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { validateAddress } from "@/app/actions/address-validation";
+import { toast } from "sonner";
 import { z } from "zod";
+import { AddressSelectionDialog } from "./address-selection-dialog";
 
 interface AddPropertyAddressFormProps {
   propertyId?: string;

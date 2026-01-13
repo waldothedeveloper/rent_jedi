@@ -12,9 +12,9 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "auth:generate": "npx @better-auth/cli@latest generate --config ./src/lib/auth.ts --output ./src/db/schema/new-auth-schema.ts --yes",
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui",
-    "test:e2e:report": "playwright show-report"
+    "test:e2e": "npx playwright test",
+    "test:e2e:ui": "npx playwright test --ui",
+    "test:e2e:report": "npx playwright show-report"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

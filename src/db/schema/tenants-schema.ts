@@ -2,6 +2,7 @@ import { EMAILREGEX, PHONEREGEX } from "@/lib/utils";
 import {
   check,
   index,
+  pgEnum,
   pgTable,
   text,
   timestamp,
@@ -12,18 +13,24 @@ import { relations, sql } from "drizzle-orm";
 
 import { unit } from "./units-schema";
 
+export const tenantStatusEnum = pgEnum("tenant_status", [
+  "draft",
+  "active",
+  "archived",
+  "inactive",
+]);
+
 export const tenant = pgTable(
   "tenant",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    unitId: uuid("unit_id")
-      .notNull()
-      .references(() => unit.id, { onDelete: "cascade" }),
+    unitId: uuid("unit_id").references(() => unit.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     email: text("email"),
     phone: text("phone"),
-    leaseStartDate: timestamp("lease_start_date").notNull(),
+    leaseStartDate: timestamp("lease_start_date"),
     leaseEndDate: timestamp("lease_end_date"),
+    tenantStatus: tenantStatusEnum("tenant_status").notNull().default("draft"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
       .defaultNow()
@@ -34,7 +41,9 @@ export const tenant = pgTable(
     index("tenant_unit_id_idx").on(table.unitId),
     uniqueIndex("tenant_unit_active_uid")
       .on(table.unitId)
-      .where(sql`${table.leaseEndDate} IS NULL`),
+      .where(
+        sql`${table.leaseEndDate} IS NULL AND ${table.tenantStatus} = 'active'`
+      ),
     check(
       "tenant_lease_dates_ordered",
       sql`${table.leaseEndDate} IS NULL OR ${table.leaseEndDate} > ${table.leaseStartDate}`

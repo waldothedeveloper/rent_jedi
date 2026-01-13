@@ -2,7 +2,13 @@
 
 import * as React from "react";
 
-import { DollarSign, House, MessageCircleMore, Wrench } from "lucide-react";
+import {
+  DollarSign,
+  House,
+  MessageCircleMore,
+  Users,
+  Wrench,
+} from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -28,14 +34,19 @@ const data = {
       isActive: true,
     },
     {
-      title: "Maintenance",
-      url: "/owners/maintenance",
-      icon: Wrench,
+      title: "Tenants",
+      url: "/owners/tenants",
+      icon: Users,
     },
     {
       title: "Payments",
       url: "/owners/payments",
       icon: DollarSign,
+    },
+    {
+      title: "Maintenance",
+      url: "/owners/maintenance",
+      icon: Wrench,
     },
     {
       title: "Messages",

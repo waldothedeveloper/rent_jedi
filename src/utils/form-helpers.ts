@@ -6,19 +6,14 @@ import { z } from "zod";
 export const currentYear = new Date().getFullYear();
 export const formattedPhoneRegex = /^\(\d{3}\) \d{3} - \d{4}$/;
 
-// Reusable schema builders for consistent validation and transformation
-
-// Optional string that becomes undefined when empty
 const optionalString = () =>
   z
     .string()
     .trim()
     .transform((val) => val || undefined);
 
-// Required string (already trimmed by Zod)
 const requiredString = () => z.string().trim();
 
-// Phone field with E.164 transformation
 const phoneField = () =>
   z
     .string()
@@ -34,7 +29,6 @@ const phoneField = () =>
       ])
     );
 
-// Optional numeric field
 const optionalNumeric = (min?: number, max?: number) => {
   return z
     .union([
@@ -102,7 +96,7 @@ export const toE164Phone = (value?: string | null) => {
 
 export const formatPhoneFromE164 = (phone: string | null): string => {
   if (!phone) return "";
-  // If it's E.164 format like +11234567890, convert to (123) 456 - 7890
+
   if (phone.startsWith("+1") && phone.length === 12) {
     const digits = phone.slice(2);
     return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)} - ${digits.slice(6)}`;
@@ -220,7 +214,6 @@ export const usStateOptions = [
 
 export type USStateOption = (typeof usStateOptions)[number];
 
-// Property status options for select dropdowns
 export const propertyStatusOptions = [
   "draft",
   "live",
@@ -230,7 +223,6 @@ export const propertyStatusOptions = [
 
 export type PropertyStatus = (typeof propertyStatusOptions)[number];
 
-// Property status options with labels for UI select components
 export const propertyStatusSelectOptions = [
   { value: "draft", label: "Draft" },
   { value: "live", label: "Live" },
@@ -238,7 +230,6 @@ export const propertyStatusSelectOptions = [
   { value: "rented", label: "Rented" },
 ] as const;
 
-// Bedroom options for select dropdowns
 export const bedroomOptions = [
   { value: "studio", label: "Studio" },
   { value: "1", label: "1" },
@@ -255,7 +246,6 @@ export const bedroomOptions = [
   { value: "12+", label: "+12" },
 ] as const;
 
-// Bathroom options for select dropdowns
 export const bathroomOptions = [
   { value: "0", label: "0" },
   { value: "1", label: "1" },
@@ -283,7 +273,6 @@ export const bathroomOptions = [
   { value: "12+", label: "+12" },
 ] as const;
 
-// Convert bedrooms number to string for form display
 export const bedroomsToString = (bedrooms: number | null): string => {
   if (bedrooms === null) return "";
   if (bedrooms === 0) return "studio";
@@ -291,7 +280,6 @@ export const bedroomsToString = (bedrooms: number | null): string => {
   return bedrooms.toString();
 };
 
-// Convert bathrooms number to string for form display
 export const bathroomsToString = (bathrooms: string | null): string => {
   if (!bathrooms) return "";
   const num = parseFloat(bathrooms);
@@ -300,50 +288,42 @@ export const bathroomsToString = (bathrooms: string | null): string => {
 };
 
 export const propertyFormSchema = z.object({
-  // Required strings
   name: requiredString(),
   addressLine1: requiredString().min(2, "Address line 1 is required."),
   city: requiredString().min(2, "City is required."),
   zipCode: requiredString().min(3, "ZIP / Postal code is required."),
 
-  // Required with default value
   country: z
     .string()
     .trim()
     .min(2, "Country is required.")
     .transform((val) => val || "United States"),
 
-  // Optional strings
   description: optionalString().refine(
     (val) => !val || val.length <= 2000,
     "Keep the description under 2000 characters."
   ),
   addressLine2: optionalString(),
 
-  // Enums (unchanged)
   unitType: z.enum(unitTypeOptions, "Please select a unit type."),
   propertyType: z.enum(propertyTypeOptions, "Please select a property type."),
   state: z.enum(usStateOptions, {
     message: "Select a US state or territory.",
   }),
 
-  // Email (allow empty or valid email)
   contactEmail: z
     .string()
     .trim()
     .transform((val) => val || undefined)
     .pipe(z.union([z.undefined(), z.email("Enter a valid email.")])),
 
-  // Phone with E.164 transformation
   contactPhone: phoneField(),
 
-  // Optional numeric fields
   yearBuilt: optionalNumeric(1700, currentYear),
   buildingSqFt: optionalNumeric(1),
   lotSqFt: optionalNumeric(1),
 });
 
-// Address-only schema for the first step of multi-step property creation
 export const addressFormSchema = z.object({
   addressLine1: requiredString().min(2, "Address line 1 is required."),
   addressLine2: optionalString(),
@@ -359,7 +339,6 @@ export const addressFormSchema = z.object({
     .transform((val) => val || "United States"),
 });
 
-// Property name and description schema for Step 0 of add-property flow
 export const propertyNameFormSchema = z.object({
   name: requiredString()
     .min(1, "Property name is required.")
@@ -373,3 +352,59 @@ export const propertyNameFormSchema = z.object({
 
 export const controlClassName =
   "border-input placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 min-w-0 w-full rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs transition-[color,box-shadow] outline-none disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive";
+
+// Tenant form schemas
+export const tenantBasicInfoSchema = z
+  .object({
+    firstName: requiredString().min(1, "First name is required."),
+    lastName: requiredString().min(1, "Last name is required."),
+    email: z
+      .string()
+      .trim()
+      .transform((val) => val || undefined)
+      .pipe(z.union([z.undefined(), z.email("Enter a valid email.")])),
+    phone: phoneField(),
+  })
+  .refine((data) => data.email !== undefined || data.phone !== undefined, {
+    message: "Either email or phone is required.",
+    path: ["email"],
+  });
+
+export const leaseDatesSchema = z
+  .object({
+    leaseStartDate: z
+      .string()
+      .min(1, "Lease start date is required.")
+      .refine((val) => !isNaN(Date.parse(val)), "Invalid date format."),
+    leaseEndDate: z
+      .string()
+      .trim()
+      .transform((val) => val || undefined)
+      .pipe(
+        z.union([
+          z.undefined(),
+          z.string().refine((val) => !isNaN(Date.parse(val)), "Invalid date format."),
+        ])
+      ),
+  })
+  .refine(
+    (data) => {
+      if (!data.leaseEndDate) return true;
+      const start = new Date(data.leaseStartDate);
+      const end = new Date(data.leaseEndDate);
+      return end > start;
+    },
+    {
+      message: "Lease end date must be after start date.",
+      path: ["leaseEndDate"],
+    }
+  );
+
+export const unitSelectionSchema = z.object({
+  propertyId: z.uuid("Please select a property."),
+  unitId: z.uuid("Please select a unit."),
+});
+
+export const createTenantSchema = tenantBasicInfoSchema
+  .and(leaseDatesSchema)
+  .and(unitSelectionSchema);

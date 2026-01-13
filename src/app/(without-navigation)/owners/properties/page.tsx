@@ -1,4 +1,4 @@
-import { EmptyStateProperty } from "./empty-state";
+import { EmptyStateProperty } from "./empty-state-properties";
 import { ListProperties } from "./list-properties";
 import { listProperties } from "@/app/actions/properties";
 

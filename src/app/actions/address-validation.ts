@@ -1,9 +1,9 @@
 "use server";
 
-import { validateAddressWithGoogleDAL } from "@/dal/address-validation";
 import type { AddressValidationResult } from "@/types/google-maps";
+import { addressFormSchema } from "@/utils/form-helpers";
+import { validateAddressWithGoogleDAL } from "@/dal/address-validation";
 import { z } from "zod";
-import { addressFormSchema } from "@/app/(without-navigation)/owners/properties/form-helpers";
 
 /**
  * Server action to validate address with Google Maps API
@@ -15,7 +15,11 @@ export const validateAddress = async (
   data: z.infer<typeof addressFormSchema>
 ): Promise<AddressValidationResult> => {
   // Validate input with existing schema
-  const { success, data: parsedData, error } = addressFormSchema.safeParse(data);
+  const {
+    success,
+    data: parsedData,
+    error,
+  } = addressFormSchema.safeParse(data);
 
   if (!success) {
     return {
