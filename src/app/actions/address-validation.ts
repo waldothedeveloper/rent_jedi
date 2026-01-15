@@ -1,7 +1,7 @@
 "use server";
 
 import type { AddressValidationResult } from "@/types/google-maps";
-import { addressFormSchema } from "@/utils/form-helpers";
+import { addressFormSchema } from "@/utils/shared-schemas";
 import { validateAddressWithGoogleDAL } from "@/dal/address-validation";
 import { z } from "zod";
 

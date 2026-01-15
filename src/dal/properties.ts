@@ -133,8 +133,9 @@ export const verifySessionDAL = cache(async () => {
   return session;
 });
 
-export const createPropertyDAL = cache(
-  async (data: Property): Promise<CreateProperty> => {
+export const createPropertyDAL = async (
+  data: Property
+): Promise<CreateProperty> => {
     const session = await verifySessionDAL();
 
     if (!session) {
@@ -166,15 +167,16 @@ export const createPropertyDAL = cache(
         data: createdProperty,
       };
     } catch (error) {
-      // ("Error creating property:", error);
+      console.error("[createPropertyDAL] Error:", error);
       return {
         success: false as const,
         message:
-          "Ups! Something went wrong while creating the property. Please try again or contact support.",
+          error instanceof Error
+            ? error.message
+            : "Failed to create property. Please try again.",
       };
     }
-  }
-);
+  };
 
 export const listPropertiesDAL = cache(async () => {
   const session = await verifySessionDAL();
@@ -232,7 +234,6 @@ export const listPropertiesDAL = cache(async () => {
       data: properties,
     };
   } catch (error) {
-    // ("Error listing properties:", error);
     return {
       success: false as const,
       message:
@@ -300,7 +301,7 @@ export const getPropertyByIdDAL = cache(
         },
       };
     } catch (error) {
-      // ("Error fetching property by ID:", error);
+      console.error("[getPropertyByIdDAL] Error:", error);
       return {
         success: false,
         message:
@@ -312,10 +313,9 @@ export const getPropertyByIdDAL = cache(
   }
 );
 
-export const createUnitDAL = cache(
-  async (
-    data: Unit
-  ): Promise<{
+export const createUnitDAL = async (
+  data: Unit
+): Promise<{
     success: boolean;
     data?: Unit;
     message?: string;
@@ -345,6 +345,7 @@ export const createUnitDAL = cache(
         data: createdUnit,
       };
     } catch (error) {
+      console.error("[createUnitDAL] Error:", error);
       return {
         success: false,
         message:
@@ -353,13 +354,11 @@ export const createUnitDAL = cache(
             : "Failed to create unit. Please try again.",
       };
     }
-  }
-);
+  };
 
-export const createUnitsDAL = cache(
-  async (
-    unitsData: (typeof unit.$inferInsert)[]
-  ): Promise<{
+export const createUnitsDAL = async (
+  unitsData: (typeof unit.$inferInsert)[]
+): Promise<{
     success: boolean;
     data?: (typeof unit.$inferSelect)[];
     message?: string;
@@ -411,14 +410,12 @@ export const createUnitsDAL = cache(
         message: errorMessage || "Failed to create units. Please try again.",
       };
     }
-  }
-);
+  };
 
-export const updatePropertyDraftDAL = cache(
-  async (
-    propertyId: string,
-    data: Partial<typeof property.$inferInsert>
-  ): Promise<{
+export const updatePropertyDraftDAL = async (
+  propertyId: string,
+  data: Partial<typeof property.$inferInsert>
+): Promise<{
     success: boolean;
     data?: typeof property.$inferSelect;
     message?: string;
@@ -482,6 +479,7 @@ export const updatePropertyDraftDAL = cache(
         data: updatedProperty,
       };
     } catch (error) {
+      console.error("[updatePropertyDraftDAL] Error:", error);
       return {
         success: false,
         message:
@@ -490,8 +488,7 @@ export const updatePropertyDraftDAL = cache(
             : "Failed to update property. Please try again.",
       };
     }
-  }
-);
+  };
 
 export const getDraftPropertyByOwnerDAL = cache(
   async (): Promise<{
@@ -563,6 +560,7 @@ export const getDraftPropertyByOwnerDAL = cache(
         },
       };
     } catch (error) {
+      console.error("[getDraftPropertyByOwnerDAL] Error:", error);
       return {
         success: false,
         message:
@@ -660,6 +658,7 @@ export const getPropertyWithUnitsCountDAL = cache(
         },
       };
     } catch (error) {
+      console.error("[getPropertyWithUnitsCountDAL] Error:", error);
       return {
         success: false,
         message:
@@ -671,11 +670,10 @@ export const getPropertyWithUnitsCountDAL = cache(
   }
 );
 
-export const updateUnitDAL = cache(
-  async (
-    unitId: string,
-    data: Partial<typeof unit.$inferInsert>
-  ): Promise<{
+export const updateUnitDAL = async (
+  unitId: string,
+  data: Partial<typeof unit.$inferInsert>
+): Promise<{
     success: boolean;
     data?: typeof unit.$inferSelect;
     message?: string;
@@ -739,6 +737,7 @@ export const updateUnitDAL = cache(
         data: updatedUnit,
       };
     } catch (error) {
+      console.error("[updateUnitDAL] Error:", error);
       return {
         success: false,
         message:
@@ -747,13 +746,11 @@ export const updateUnitDAL = cache(
             : "Failed to update unit. Please try again.",
       };
     }
-  }
-);
+  };
 
-export const deletePropertyDAL = cache(
-  async (
-    propertyId: string
-  ): Promise<{
+export const deletePropertyDAL = async (
+  propertyId: string
+): Promise<{
     success: boolean;
     message?: string;
   }> => {
@@ -807,6 +804,7 @@ export const deletePropertyDAL = cache(
         success: true,
       };
     } catch (error) {
+      console.error("[deletePropertyDAL] Error:", error);
       return {
         success: false,
         message:
@@ -815,8 +813,7 @@ export const deletePropertyDAL = cache(
             : "Failed to delete property. Please try again.",
       };
     }
-  }
-);
+  };
 
 /**
  * Get all properties with available unit counts for tenant creation dropdown
@@ -882,9 +879,13 @@ export const getPropertiesWithAvailableUnitsDAL = cache(
         data: Array.from(propertyMap.values()),
       };
     } catch (error) {
+      console.error("[getPropertiesWithAvailableUnitsDAL] Error:", error);
       return {
         success: false,
-        message: "Failed to fetch properties.",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to fetch properties.",
       };
     }
   }
@@ -950,9 +951,13 @@ export const getAvailableUnitsByPropertyDAL = cache(
         data: availableUnits.map((row) => row.unit),
       };
     } catch (error) {
+      console.error("[getAvailableUnitsByPropertyDAL] Error:", error);
       return {
         success: false,
-        message: "Failed to fetch available units.",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to fetch available units.",
       };
     }
   }

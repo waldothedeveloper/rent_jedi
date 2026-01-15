@@ -1,10 +1,7 @@
 "use server";
 
-import {
-  addressFormSchema,
-  propertyFormSchema,
-  toE164Phone,
-} from "@/utils/form-helpers";
+import { addressFormSchema, propertyFormSchema } from "@/utils/shared-schemas";
+import { toE164Phone } from "@/utils/form-helpers";
 import {
   createPropertyDAL,
   createUnitsDAL,

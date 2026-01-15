@@ -1,6 +1,6 @@
 "server only";
 
-import { and, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 
 import type { Roles } from "@/types/roles";
 import { auth } from "@/lib/auth";
@@ -16,12 +16,16 @@ import { verifySessionDAL } from "@/dal/properties";
 TYPE DEFINITIONS BELOW
 
 */
-type Tenant = typeof tenant.$inferInsert;
 type TenantUpdate = Partial<
   Omit<typeof tenant.$inferInsert, "id" | "createdAt" | "updatedAt">
 >;
 type GuardResult = { success: true } | { success: false; message: string };
 type TenantStatus = (typeof tenant.$inferInsert)["tenantStatus"];
+
+export type TenantWithDetails = typeof tenant.$inferSelect & {
+  unit?: typeof unit.$inferSelect | null;
+  property?: typeof property.$inferSelect | null;
+};
 
 /*
 
@@ -209,86 +213,11 @@ ONLY DAL FUNCTIONS BELOW
 
 */
 
-export const createTenantDAL = cache(
-  async (
-    data: Tenant
-  ): Promise<{
-    success: boolean;
-    data?: typeof tenant.$inferSelect;
-    message?: string;
-  }> => {
-    const session = await verifySessionDAL();
-
-    if (!session) {
-      return {
-        success: false,
-        message: "⛔️ Access Denied. You must be signed in to create a tenant.",
-      };
-    }
-
-    if (!(await canCreateTenant(session.user.id, session.user.role as Roles))) {
-      return {
-        success: false as const,
-        message:
-          "⛔️ Access Denied. You do not have permission to create a tenant.",
-      };
-    }
-
-    try {
-      const ownershipResult = await verifyUnitOwnershipForTenant(
-        data.unitId,
-        session.user.id
-      );
-
-      if (!ownershipResult.success) {
-        return ownershipResult;
-      }
-
-      const availabilityResult = await ensureUnitHasNoActiveTenant(data.unitId);
-
-      if (!availabilityResult.success) {
-        return availabilityResult;
-      }
-
-      const [createdTenant] = await db.insert(tenant).values(data).returning();
-
-      return {
-        success: true,
-        data: createdTenant,
-      };
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-
-      // Check for constraint violations
-      if (errorMessage.includes("tenant_unit_active_uid")) {
-        return {
-          success: false,
-          message: "This unit already has an active tenant.",
-        };
-      }
-
-      if (errorMessage.includes("tenant_contact_method_required")) {
-        return {
-          success: false,
-          message: "Either email or phone is required.",
-        };
-      }
-
-      return {
-        success: false,
-        message: "Failed to create tenant. Please try again.",
-      };
-    }
-  }
-);
-
 /**
  * Create a tenant draft with Step 1 data (name, email, phone)
  * Draft pattern for security: Store PII in database instead of localStorage
  */
-export const createTenantDraftDAL = cache(
-  async (data: {
+export const createTenantDraftDAL = async (data: {
     name: string;
     email?: string | null;
     phone?: string | null;
@@ -330,22 +259,27 @@ export const createTenantDraftDAL = cache(
           email: data.email || null,
           phone: data.phone || null,
           tenantStatus: "draft",
+          ownerId: session.user.id,
         })
         .returning();
 
       return { success: true, data: createdTenant };
     } catch (error) {
       console.error("[createTenantDraftDAL] Error:", error);
-      return { success: false, message: "Failed to create tenant draft." };
+      return {
+        success: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to create tenant draft.",
+      };
     }
-  }
-);
+  };
 
 /**
  * Update tenant draft with incremental data (Step 2: lease dates)
  */
-export const updateTenantDraftDAL = cache(
-  async (
+export const updateTenantDraftDAL = async (
     tenantId: string,
     data: TenantUpdate
   ): Promise<{
@@ -382,6 +316,14 @@ export const updateTenantDraftDAL = cache(
         return { success: false, message: "Tenant not found." };
       }
 
+      if (existingTenant.ownerId !== session.user.id) {
+        return {
+          success: false,
+          message:
+            "⛔️ Access Denied. You do not have permission to update this tenant.",
+        };
+      }
+
       if (existingTenant.tenantStatus !== "draft") {
         return {
           success: false,
@@ -400,13 +342,18 @@ export const updateTenantDraftDAL = cache(
 
       return { success: true, data: updatedTenant };
     } catch (error) {
-      return { success: false, message: "Failed to update tenant draft." };
+      console.error("[updateTenantDraftDAL] Error:", error);
+      return {
+        success: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to update tenant draft.",
+      };
     }
-  }
-);
+  };
 
-export const activateTenantDraftDAL = cache(
-  async (
+export const activateTenantDraftDAL = async (
     tenantId: string,
     unitId: string
   ): Promise<{
@@ -445,6 +392,32 @@ export const activateTenantDraftDAL = cache(
         return ownershipResult;
       }
 
+      // Verify tenant ownership
+      const existingTenant = await db
+        .select()
+        .from(tenant)
+        .where(eq(tenant.id, tenantId))
+        .limit(1)
+        .then((rows) => rows[0]);
+
+      if (!existingTenant) {
+        return { success: false, message: "Tenant not found." };
+      }
+
+      if (existingTenant.ownerId !== session.user.id) {
+        return {
+          success: false,
+          message: "⛔️ Access Denied.",
+        };
+      }
+
+      if (existingTenant.tenantStatus !== "draft") {
+        return {
+          success: false,
+          message: "Cannot activate a tenant that is not in draft status.",
+        };
+      }
+
       const availabilityResult = await ensureUnitHasNoActiveTenant(unitId, {
         tenantStatus: "active",
         message: "This unit already has an active tenant.",
@@ -466,10 +439,14 @@ export const activateTenantDraftDAL = cache(
 
       return { success: true, data: activatedTenant };
     } catch (error) {
-      return { success: false, message: "Failed to activate tenant." };
+      console.error("[activateTenantDraftDAL] Error:", error);
+      return {
+        success: false,
+        message:
+          error instanceof Error ? error.message : "Failed to activate tenant.",
+      };
     }
-  }
-);
+  };
 
 /**
  * Get tenant by ID with ownership verification
@@ -523,12 +500,12 @@ export const getTenantByIdDAL = cache(
         };
       }
 
-      // For drafts without units, no ownership check needed
-      // For active tenants, verify ownership
-      if (result.property && result.property.ownerId !== session.user.id) {
+      // Verify ownership for all tenant records (drafts and active)
+      if (result.tenant.ownerId !== session.user.id) {
         return {
           success: false,
-          message: "⛔️ Access Denied.",
+          message:
+            "⛔️ Access Denied. You cannot see tenants that do not belong to you.",
         };
       }
 
@@ -541,9 +518,78 @@ export const getTenantByIdDAL = cache(
         },
       };
     } catch (error) {
+      console.error("[getTenantByIdDAL] Error:", error);
       return {
         success: false,
-        message: "Failed to fetch tenant.",
+        message:
+          error instanceof Error ? error.message : "Failed to fetch tenant.",
+      };
+    }
+  }
+);
+
+/**
+ * List all tenants for the current owner
+ * Includes drafts, active, archived, and inactive tenants
+ * Returns tenant with associated unit and property information
+ */
+export const listTenantsDAL = cache(
+  async (): Promise<{
+    success: boolean;
+    data?: Array<
+      typeof tenant.$inferSelect & {
+        unit?: typeof unit.$inferSelect | null;
+        property?: typeof property.$inferSelect | null;
+      }
+    >;
+    message?: string;
+  }> => {
+    const session = await verifySessionDAL();
+
+    if (!session) {
+      return {
+        success: false,
+        message: "⛔️ Access Denied. You must be signed in.",
+      };
+    }
+
+    if (!(await canListTenants(session.user.id, session.user.role as Roles))) {
+      return {
+        success: false,
+        message:
+          "⛔️ Access Denied. You do not have permission to list tenants.",
+      };
+    }
+
+    try {
+      const results = await db
+        .select({
+          tenant: tenant,
+          unit: unit,
+          property: property,
+        })
+        .from(tenant)
+        .leftJoin(unit, eq(tenant.unitId, unit.id)) // LEFT JOIN for drafts without unitId
+        .leftJoin(property, eq(unit.propertyId, property.id))
+        .where(eq(tenant.ownerId, session.user.id)) // Filter by owner
+        .orderBy(desc(tenant.createdAt)); // Most recent first
+
+      const formattedResults = results.map((row) => ({
+        ...row.tenant,
+        unit: row.unit,
+        property: row.property,
+      }));
+
+      return {
+        success: true,
+        data: formattedResults,
+      };
+    } catch (error) {
+      console.error("[listTenantsDAL] Error:", error);
+      return {
+        success: false,
+        message:
+          error instanceof Error ? error.message : "Failed to fetch tenants.",
       };
     }
   }

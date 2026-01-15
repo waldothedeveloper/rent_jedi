@@ -18,9 +18,9 @@ import {
 import {
   controlClassName,
   formatLabel,
-  propertyNameFormSchema,
   propertyTypeOptions,
 } from "@/utils/form-helpers";
+import { propertyNameFormSchema } from "@/utils/shared-schemas";
 import { revalidateLogic, useForm } from "@tanstack/react-form";
 
 import { ArrowRight } from "lucide-react";
