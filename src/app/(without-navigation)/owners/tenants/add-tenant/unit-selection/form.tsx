@@ -80,11 +80,11 @@ export default function UnitSelectionForm({
     },
     validationLogic: revalidateLogic({
       mode: "submit",
-      modeAfterSubmission: "blur",
+      modeAfterSubmission: "change",
     }),
     validators: {
       onSubmit: unitSelectionSchema,
-      onDynamic: unitSelectionSchema,
+      onChange: unitSelectionSchema,
     },
     onSubmit: async ({ value }) => {
       setFormError(null);
@@ -192,23 +192,28 @@ export default function UnitSelectionForm({
       <div className="flex flex-col items-center justify-center gap-6 p-6 md:p-10 mt-12">
         <div className="flex w-full max-w-2xl flex-col gap-6">
           <div className="flex flex-col gap-2">
-            <h1 className="text-2xl font-semibold">No Available Units</h1>
+            <h1 className="text-2xl font-semibold">No Available Properties</h1>
             <p className="text-sm text-muted-foreground">
-              All your units currently have active tenants. <br /> Here's what
-              you can do to resolve this issue:
+              All your available properties currently have active tenants.{" "}
+              <br /> Here's what you can do:
             </p>
 
             <ul className="mb-6 ml-6 list-disc [&>li]:mt-2 text-muted-foreground text-sm">
-              <li>Create a new property</li>
-              <li>
-                End Lease for an existing tenant in one of your properties
-              </li>
+              <li>Create a new property and assign the new tenant</li>
+              <li>End Lease for a tenant in one of your existing properties</li>
             </ul>
           </div>
-          <div className="flex gap-4">
-            <Button variant="outline" asChild>
-              <Link href="/owners/tenants">Go Back</Link>
-            </Button>
+          <div className="flex items-center gap-2">
+            <div className="flex gap-4">
+              <Button variant="outline" asChild>
+                <Link href="/owners/tenants">Back To Tenants</Link>
+              </Button>
+            </div>
+            <div>
+              <Button asChild variant="outline">
+                <Link href="/properties/add-property">Add Property</Link>
+              </Button>
+            </div>
           </div>
         </div>
       </div>
