@@ -34,7 +34,7 @@ import { activateTenantDraft } from "@/app/actions/tenants";
 import { cn } from "@/lib/utils";
 import { getAvailableUnitsByProperty } from "@/app/actions/properties";
 import { toast } from "sonner";
-import { unitSelectionSchema } from "@/utils/form-helpers";
+import { unitSelectionSchema } from "@/utils/shared-schemas";
 
 interface Property {
   id: string;

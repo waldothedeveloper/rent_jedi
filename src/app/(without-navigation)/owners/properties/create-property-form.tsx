@@ -16,11 +16,11 @@ import {
   disallowNonNumericInput,
   formatLabel,
   formatToPhone,
-  propertyFormSchema,
   propertyTypeOptions,
   unitTypeOptions,
   usStateOptions,
 } from "@/utils/form-helpers";
+import { propertyFormSchema } from "@/utils/shared-schemas";
 import { revalidateLogic, useForm } from "@tanstack/react-form";
 
 import {

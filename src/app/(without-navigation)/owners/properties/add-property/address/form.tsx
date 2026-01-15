@@ -18,12 +18,12 @@ import type {
   NormalizedAddress,
 } from "@/types/google-maps";
 import {
-  addressFormSchema,
   controlClassName,
   propertyTypeOptions,
   usStateOptions,
   type PropertyType,
 } from "@/utils/form-helpers";
+import { addressFormSchema } from "@/utils/shared-schemas";
 import { revalidateLogic, useForm } from "@tanstack/react-form";
 import { useEffect, useState } from "react";
 

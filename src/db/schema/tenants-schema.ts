@@ -11,6 +11,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 
+import { user } from "./auth-schema";
 import { unit } from "./units-schema";
 
 export const tenantStatusEnum = pgEnum("tenant_status", [
@@ -25,6 +26,9 @@ export const tenant = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     unitId: uuid("unit_id").references(() => unit.id, { onDelete: "cascade" }),
+    ownerId: text("owner_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
     name: text("name").notNull(),
     email: text("email"),
     phone: text("phone"),
@@ -39,6 +43,7 @@ export const tenant = pgTable(
   },
   (table) => [
     index("tenant_unit_id_idx").on(table.unitId),
+    index("tenant_owner_id_idx").on(table.ownerId),
     uniqueIndex("tenant_unit_active_uid")
       .on(table.unitId)
       .where(

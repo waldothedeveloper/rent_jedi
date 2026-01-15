@@ -200,35 +200,42 @@ export function PropertyActions({ property }: PropertyActionsProps) {
             </DropdownMenuContent>
           </DropdownMenu>
           {/* Navigation for bigger screens */}
-          <nav className="hidden md:flex gap-6 text-sm">
-            <Link
-              href={`/owners/properties/details/edit?id=${property.id}`}
-              className="hover:text-muted-foreground flex items-center gap-1.5"
-            >
-              <Pencil className="size-4" />
-              Edit
-            </Link>
-            <button
+          <nav className="hidden md:flex text-sm">
+            <Button variant="ghost" asChild>
+              <Link
+                href={`/owners/properties/details/edit?id=${property.id}`}
+                className="hover:text-muted-foreground flex items-center gap-1.5"
+              >
+                <Pencil className="size-4" />
+                Edit
+              </Link>
+            </Button>
+            <Button
+              variant="ghost"
               onClick={() => setDeleteDialogOpen(true)}
               className="hover:text-muted-foreground flex items-center gap-1.5"
             >
               <Trash2 className="size-4" />
               Delete
-            </button>
-            <Link
-              href="#"
-              className="hover:text-muted-foreground flex items-center gap-1.5"
-            >
-              <Send className="size-4" />
-              Publish
-            </Link>
-            <Link
-              href="#"
-              className="hover:text-muted-foreground flex items-center gap-1.5"
-            >
-              <Share2 className="size-4" />
-              Share
-            </Link>
+            </Button>
+            <Button variant="ghost" asChild>
+              <Link
+                href="#"
+                className="hover:text-muted-foreground flex items-center gap-1.5"
+              >
+                <Send className="size-4" />
+                Publish
+              </Link>
+            </Button>
+            <Button variant="ghost" asChild>
+              <Link
+                href="#"
+                className="hover:text-muted-foreground flex items-center gap-1.5"
+              >
+                <Share2 className="size-4" />
+                Share
+              </Link>
+            </Button>
           </nav>
         </div>
         <PropertyAddress {...addressData} />

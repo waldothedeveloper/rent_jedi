@@ -15,8 +15,8 @@ import {
 import {
   formatPhoneFromE164,
   formatToPhone,
-  tenantBasicInfoSchema,
 } from "@/utils/form-helpers";
+import { tenantBasicInfoSchema } from "@/utils/shared-schemas";
 import { revalidateLogic, useForm } from "@tanstack/react-form";
 
 import { ArrowRight } from "lucide-react";

@@ -1,6 +1,6 @@
 "use client";
 
-import { leaseDatesSchema } from "@/utils/form-helpers";
+import { leaseDatesSchema } from "@/utils/shared-schemas";
 import { revalidateLogic, useForm } from "@tanstack/react-form";
 import { useRouter } from "next/navigation";
 import { useState } from "react";

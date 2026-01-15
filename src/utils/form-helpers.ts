@@ -1,52 +1,10 @@
 import type { ChangeEvent, KeyboardEvent } from "react";
 
 import { PHONEREGEX } from "@/lib/utils";
-import { z } from "zod";
 
 export const currentYear = new Date().getFullYear();
 export const formattedPhoneRegex = /^\(\d{3}\) \d{3} - \d{4}$/;
 
-const optionalString = () =>
-  z
-    .string()
-    .trim()
-    .transform((val) => val || undefined);
-
-const requiredString = () => z.string().trim();
-
-const phoneField = () =>
-  z
-    .string()
-    .trim()
-    .transform((val) => {
-      if (!val) return undefined;
-      return toE164Phone(val) || undefined;
-    })
-    .pipe(
-      z.union([
-        z.undefined(),
-        z.string().regex(new RegExp(PHONEREGEX), "Invalid phone format"),
-      ])
-    );
-
-const optionalNumeric = (min?: number, max?: number) => {
-  return z
-    .union([
-      z.string().trim().regex(/^\d+$/, "Use numbers only."),
-      z.literal(""),
-    ])
-    .transform((val) => (val ? Number(val) : undefined))
-    .pipe(
-      z.union([
-        z.undefined(),
-        z
-          .number()
-          .int()
-          .refine((v) => min === undefined || v >= min)
-          .refine((v) => max === undefined || v <= max),
-      ])
-    );
-};
 
 export const disallowNonNumericInput = (
   evt: KeyboardEvent<HTMLInputElement>
@@ -287,124 +245,22 @@ export const bathroomsToString = (bathrooms: string | null): string => {
   return bathrooms;
 };
 
-export const propertyFormSchema = z.object({
-  name: requiredString(),
-  addressLine1: requiredString().min(2, "Address line 1 is required."),
-  city: requiredString().min(2, "City is required."),
-  zipCode: requiredString().min(3, "ZIP / Postal code is required."),
-
-  country: z
-    .string()
-    .trim()
-    .min(2, "Country is required.")
-    .transform((val) => val || "United States"),
-
-  description: optionalString().refine(
-    (val) => !val || val.length <= 2000,
-    "Keep the description under 2000 characters."
-  ),
-  addressLine2: optionalString(),
-
-  unitType: z.enum(unitTypeOptions, "Please select a unit type."),
-  propertyType: z.enum(propertyTypeOptions, "Please select a property type."),
-  state: z.enum(usStateOptions, {
-    message: "Select a US state or territory.",
-  }),
-
-  contactEmail: z
-    .string()
-    .trim()
-    .transform((val) => val || undefined)
-    .pipe(z.union([z.undefined(), z.email("Enter a valid email.")])),
-
-  contactPhone: phoneField(),
-
-  yearBuilt: optionalNumeric(1700, currentYear),
-  buildingSqFt: optionalNumeric(1),
-  lotSqFt: optionalNumeric(1),
-});
-
-export const addressFormSchema = z.object({
-  addressLine1: requiredString().min(2, "Address line 1 is required."),
-  addressLine2: optionalString(),
-  city: requiredString().min(2, "City is required."),
-  state: z.enum(usStateOptions, {
-    message: "Select a US state or territory.",
-  }),
-  zipCode: requiredString().min(3, "ZIP / Postal code is required."),
-  country: z
-    .string()
-    .trim()
-    .min(2, "Country is required.")
-    .transform((val) => val || "United States"),
-});
-
-export const propertyNameFormSchema = z.object({
-  name: requiredString()
-    .min(1, "Property name is required.")
-    .max(200, "Keep the name under 200 characters."),
-  propertyType: propertyFormSchema.shape.propertyType,
-  description: optionalString().refine(
-    (val) => !val || val.length <= 2000,
-    "Keep the description under 2000 characters."
-  ),
-});
-
 export const controlClassName =
   "border-input placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 min-w-0 w-full rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs transition-[color,box-shadow] outline-none disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive";
 
-// Tenant form schemas
-export const tenantBasicInfoSchema = z
-  .object({
-    firstName: requiredString().min(1, "First name is required."),
-    lastName: requiredString().min(1, "Last name is required."),
-    email: z
-      .string()
-      .trim()
-      .transform((val) => val || undefined)
-      .pipe(z.union([z.undefined(), z.email("Enter a valid email.")])),
-    phone: phoneField(),
-  })
-  .refine((data) => data.email !== undefined || data.phone !== undefined, {
-    message: "Either email or phone is required.",
-    path: ["email"],
-  });
+export function formatCurrency(amount: string | null | undefined): string {
+  if (!amount) return "—";
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(parseFloat(amount));
+}
 
-export const leaseDatesSchema = z
-  .object({
-    leaseStartDate: z
-      .string()
-      .min(1, "Lease start date is required.")
-      .refine((val) => !isNaN(Date.parse(val)), "Invalid date format."),
-    leaseEndDate: z
-      .string()
-      .trim()
-      .transform((val) => val || undefined)
-      .pipe(
-        z.union([
-          z.undefined(),
-          z.string().refine((val) => !isNaN(Date.parse(val)), "Invalid date format."),
-        ])
-      ),
-  })
-  .refine(
-    (data) => {
-      if (!data.leaseEndDate) return true;
-      const start = new Date(data.leaseStartDate);
-      const end = new Date(data.leaseEndDate);
-      return end > start;
-    },
-    {
-      message: "Lease end date must be after start date.",
-      path: ["leaseEndDate"],
-    }
-  );
-
-export const unitSelectionSchema = z.object({
-  propertyId: z.uuid("Please select a property."),
-  unitId: z.uuid("Please select a unit."),
-});
-
-export const createTenantSchema = tenantBasicInfoSchema
-  .and(leaseDatesSchema)
-  .and(unitSelectionSchema);
+export function formatDate(date: Date | null | undefined): string {
+  if (!date) return "—";
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(date));
+}

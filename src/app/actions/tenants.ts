@@ -4,13 +4,14 @@ import {
   activateTenantDraftDAL,
   createTenantDraftDAL,
   getTenantByIdDAL,
+  listTenantsDAL,
   updateTenantDraftDAL,
 } from "@/dal/tenants";
 import {
   leaseDatesSchema,
   tenantBasicInfoSchema,
   unitSelectionSchema,
-} from "@/utils/form-helpers";
+} from "@/utils/shared-schemas";
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -160,4 +161,12 @@ export async function getTenantForEdit(tenantId: string) {
     success: true,
     tenant: result.data,
   };
+}
+
+/**
+ * List all tenants for the current owner
+ */
+export async function listTenants() {
+  const result = await listTenantsDAL();
+  return result;
 }
