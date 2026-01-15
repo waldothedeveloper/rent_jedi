@@ -30,7 +30,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { activateTenantDraft } from "@/app/actions/tenants";
 import { cn } from "@/lib/utils";
 import { getAvailableUnitsByProperty } from "@/app/actions/properties";
 import { toast } from "sonner";
@@ -95,27 +94,15 @@ export default function UnitSelectionForm({
         return;
       }
 
-      try {
-        // Activate tenant draft with unit assignment
-        const result = await activateTenantDraft(tenantId, {
-          propertyId: value.propertyId,
-          unitId: value.unitId,
-        });
+      // Navigate to invitation step with unit selection
+      const params = new URLSearchParams({
+        tenantId,
+        completedSteps: "3",
+        propertyId: value.propertyId,
+        unitId: value.unitId,
+      });
 
-        if (!result.success) {
-          setFormError(result.message || "Failed to create tenant");
-          toast.error(result.message || "Failed to create tenant");
-          return;
-        }
-
-        toast.success("Tenant created successfully!");
-        router.push("/owners/tenants");
-      } catch (error) {
-        const errorMsg =
-          error instanceof Error ? error.message : "Failed to create tenant";
-        setFormError(errorMsg);
-        toast.error(errorMsg);
-      }
+      router.push(`/owners/tenants/add-tenant/invitation?${params.toString()}`);
     },
   });
 
@@ -419,7 +406,7 @@ export default function UnitSelectionForm({
                       disabled={!canSubmit || isSubmitting}
                       className="flex items-center justify-center gap-2"
                     >
-                      {isSubmitting ? "Creating Tenant..." : "Create Tenant"}
+                      Continue to Invitation
                       <ArrowRight className="size-4 text-muted" />
                     </Button>
                   )}

@@ -21,6 +21,7 @@ export default function AddTenantProgressBar() {
   if (pathname.includes("/tenant-basic-info")) currentStep = 1;
   if (pathname.includes("/lease-dates")) currentStep = 2;
   if (pathname.includes("/unit-selection")) currentStep = 3;
+  if (pathname.includes("/invitation")) currentStep = 4;
 
   // Read progress from URL
   const urlCompletedSteps = parseInt(
@@ -80,6 +81,20 @@ export default function AddTenantProgressBar() {
         currentStep === 3
           ? "current"
           : completedSteps >= 3
+            ? "complete"
+            : "upcoming",
+    },
+    {
+      id: "Step 4",
+      name: "Invitation",
+      href:
+        completedSteps >= 3
+          ? `/owners/tenants/add-tenant/invitation${queryString ? `?${queryString}` : ""}`
+          : "#",
+      status:
+        currentStep === 4
+          ? "current"
+          : completedSteps >= 4
             ? "complete"
             : "upcoming",
     },
