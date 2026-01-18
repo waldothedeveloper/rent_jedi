@@ -15,6 +15,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { activateTenantDraft } from "@/app/actions/tenants";
+import { createPendingInvite } from "@/app/actions/invites";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useState } from "react";
@@ -55,7 +56,6 @@ export default function InvitationForm() {
 
       try {
         // Activate tenant draft with unit assignment
-        // Note: invitation preference (value.invitationChoice) is captured but not persisted yet
         const result = await activateTenantDraft(tenantId, {
           propertyId,
           unitId,
@@ -67,8 +67,32 @@ export default function InvitationForm() {
           return;
         }
 
-        toast.success("Tenant created successfully!");
-        router.push("/owners/tenants");
+        // Handle invitation based on user choice
+        if (value.invitationChoice === "now") {
+          // Redirect to sending page to send invitation email
+          router.push(
+            `/owners/tenants/add-tenant/sending-invitation?tenantId=${tenantId}&unitId=${unitId}&propertyId=${propertyId}`
+          );
+        } else {
+          // "Send Later" - create pending invite without sending email
+          const inviteResult = await createPendingInvite({
+            tenantId,
+            propertyId,
+          });
+
+          if (!inviteResult.success) {
+            // Tenant was created but invite failed - still redirect with warning
+            toast.warning(
+              "Tenant created, but invitation could not be saved. You can create it later."
+            );
+          } else {
+            toast.success(
+              "Tenant created! You can send the invitation later from their profile."
+            );
+          }
+
+          router.push("/owners/tenants");
+        }
       } catch (error) {
         const errorMsg =
           error instanceof Error ? error.message : "Failed to create tenant";

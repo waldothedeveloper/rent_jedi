@@ -11,7 +11,8 @@
       "WebFetch(domain:www.better-auth.com)",
       "Bash(npx shadcn@latest:*)",
       "Bash(npm run build:*)",
-      "WebFetch(domain:developers.google.com)"
+      "WebFetch(domain:developers.google.com)",
+      "Bash(npm run lint:*)"
     ]
   }
 }

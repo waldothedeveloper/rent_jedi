@@ -1,6 +1,7 @@
 import { EmailVerification } from "@/components/email-templates/email_verification";
 import { PasswordReset } from "@/components/email-templates/password_reset";
 import { PasswordResetConfirmation } from "@/components/email-templates/password_reset_confirmation";
+import { TenantInvitation } from "@/components/email-templates/tenant_invitation";
 import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -8,8 +9,19 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { to, subject, firstName, resetUrl, verificationUrl, template } =
-      body;
+    const {
+      to,
+      subject,
+      firstName,
+      resetUrl,
+      verificationUrl,
+      template,
+      inviteUrl,
+      propertyName,
+      propertyAddress,
+      unitNumber,
+      ownerName,
+    } = body;
 
     if (!to || !subject || !template) {
       return Response.json(
@@ -45,6 +57,23 @@ export async function POST(request: Request) {
           return EmailVerification({
             firstName: firstName ?? "there",
             verificationUrl,
+          });
+        }
+        case "tenant-invitation": {
+          if (!inviteUrl) {
+            throw new Error(
+              "inviteUrl is required for tenant invitation emails"
+            );
+          }
+
+          return TenantInvitation({
+            inviteeName: firstName ?? "there",
+            propertyName,
+            propertyAddress,
+            unitNumber,
+            ownerName,
+            inviteUrl,
+            expiresInDays: 14,
           });
         }
         default: {

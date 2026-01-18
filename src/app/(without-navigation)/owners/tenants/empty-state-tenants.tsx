@@ -22,7 +22,7 @@ export function EmptyStateTenants() {
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <Empty className="border-2 border-dashed m-12">
+      <Empty className="border-2 border-dashed m-4 md:m-12">
         <EmptyHeader>
           <EmptyMedia className="w-auto h-96">
             <Image

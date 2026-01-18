@@ -1,0 +1,437 @@
+"server only";
+
+import crypto from "crypto";
+import { and, desc, eq } from "drizzle-orm";
+
+import type { Roles } from "@/types/roles";
+import { auth } from "@/lib/auth";
+import { cache } from "react";
+import { db } from "@/db/drizzle";
+import { invite } from "@/db/schema/invites-schema";
+import { property } from "@/db/schema/properties-schema";
+import { tenant } from "@/db/schema/tenants-schema";
+import { verifySessionDAL } from "@/dal/properties";
+
+/*
+
+TYPE DEFINITIONS
+
+*/
+
+type InviteInsert = typeof invite.$inferInsert;
+type InviteSelect = typeof invite.$inferSelect;
+
+export type InviteWithDetails = InviteSelect & {
+  property?: typeof property.$inferSelect | null;
+  tenant?: typeof tenant.$inferSelect | null;
+};
+
+type CreateInviteResult =
+  | { success: true; data: InviteSelect }
+  | { success: false; message: string };
+
+type GetInviteResult =
+  | { success: true; data: InviteWithDetails }
+  | { success: false; message: string };
+
+type UpdateInviteResult =
+  | { success: true; data: InviteSelect }
+  | { success: false; message: string };
+
+/*
+
+ERROR MESSAGES
+
+*/
+
+const ERRORS = {
+  NOT_SIGNED_IN_CREATE: "You must be signed in to create an invitation.",
+  NOT_SIGNED_IN_VIEW: "You must be signed in to view invitations.",
+  NOT_SIGNED_IN_LIST: "You must be signed in to list invitations.",
+  NOT_SIGNED_IN_UPDATE: "You must be signed in to update invitations.",
+  NO_CREATE_PERMISSION: "You do not have permission to create invitations.",
+  NO_VIEW_PERMISSION: "You do not have permission to view invitations.",
+  NO_LIST_PERMISSION: "You do not have permission to list invitations.",
+  PROPERTY_NOT_FOUND: "Property not found.",
+  TENANT_NOT_FOUND: "Tenant not found.",
+  INVITE_NOT_FOUND: "Invitation not found.",
+  NO_PROPERTY_PERMISSION:
+    "You do not have permission to invite tenants to this property.",
+  NO_TENANT_PERMISSION: "You do not have permission to invite this tenant.",
+  NO_VIEW_THIS_INVITE: "You do not have permission to view this invitation.",
+  NO_UPDATE_THIS_INVITE:
+    "You do not have permission to update this invitation.",
+  FAILED_TO_CREATE: "Failed to create invitation.",
+  FAILED_TO_UPDATE: "Failed to update invitation.",
+  INVITE_EXPIRED:
+    "This invitation has expired. Please contact your landlord for a new invitation.",
+  INVITE_NOT_FOUND_OR_EXPIRED: "Invitation not found or has expired.",
+} as const;
+
+/*
+
+HELPER FUNCTIONS
+
+*/
+
+const buildInviteWithDetails = (result: {
+  invite: InviteSelect;
+  property: typeof property.$inferSelect | null;
+  tenant: typeof tenant.$inferSelect | null;
+}): InviteWithDetails => ({
+  ...result.invite,
+  property: result.property,
+  tenant: result.tenant,
+});
+
+/*
+
+PERMISSION CHECK FUNCTIONS
+
+*/
+
+export const canCreateInvite = cache(async (userId: string, role: Roles) => {
+  const permissionCheck = await auth.api.userHasPermission({
+    body: {
+      userId,
+      role,
+      permission: {
+        invite: ["create"],
+      },
+    },
+  });
+
+  return permissionCheck.success;
+});
+
+export const canViewInvite = cache(async (userId: string, role: Roles) => {
+  const permissionCheck = await auth.api.userHasPermission({
+    body: {
+      userId,
+      role,
+      permission: {
+        invite: ["view"],
+      },
+    },
+  });
+
+  return permissionCheck.success;
+});
+
+export const canListInvites = cache(async (userId: string, role: Roles) => {
+  const permissionCheck = await auth.api.userHasPermission({
+    body: {
+      userId,
+      role,
+      permission: {
+        invite: ["list"],
+      },
+    },
+  });
+
+  return permissionCheck.success;
+});
+
+export const canDeleteInvite = cache(async (userId: string, role: Roles) => {
+  const permissionCheck = await auth.api.userHasPermission({
+    body: {
+      userId,
+      role,
+      permission: {
+        invite: ["delete"],
+      },
+    },
+  });
+
+  return permissionCheck.success;
+});
+
+/*
+
+DAL FUNCTIONS
+
+*/
+
+export const createInviteDAL = async (data: {
+  propertyId: string;
+  tenantId: string;
+  inviteeEmail: string;
+  inviteeName?: string;
+  sendEmail?: boolean;
+}): Promise<CreateInviteResult> => {
+  const session = await verifySessionDAL();
+
+  if (!session) {
+    return { success: false, message: ERRORS.NOT_SIGNED_IN_CREATE };
+  }
+
+  const hasPermission = await canCreateInvite(
+    session.user.id,
+    session.user.role as Roles
+  );
+
+  if (!hasPermission) {
+    return { success: false, message: ERRORS.NO_CREATE_PERMISSION };
+  }
+
+  // Run all three independent queries in parallel
+  const [propertyRows, tenantRows, existingInviteRows] = await Promise.all([
+    db
+      .select()
+      .from(property)
+      .where(eq(property.id, data.propertyId))
+      .limit(1),
+    db.select().from(tenant).where(eq(tenant.id, data.tenantId)).limit(1),
+    db
+      .select()
+      .from(invite)
+      .where(
+        and(eq(invite.tenantId, data.tenantId), eq(invite.status, "pending"))
+      )
+      .limit(1),
+  ]);
+
+  const propertyRecord = propertyRows[0];
+  const tenantRecord = tenantRows[0];
+  const existingInvite = existingInviteRows[0];
+
+  // Verify property ownership
+  if (!propertyRecord) {
+    return { success: false, message: ERRORS.PROPERTY_NOT_FOUND };
+  }
+
+  if (propertyRecord.ownerId !== session.user.id) {
+    return { success: false, message: ERRORS.NO_PROPERTY_PERMISSION };
+  }
+
+  // Verify tenant ownership
+  if (!tenantRecord) {
+    return { success: false, message: ERRORS.TENANT_NOT_FOUND };
+  }
+
+  if (tenantRecord.ownerId !== session.user.id) {
+    return { success: false, message: ERRORS.NO_TENANT_PERMISSION };
+  }
+
+  // Generate secure token and expiration date (14 days)
+  const token = crypto.randomUUID();
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + 14);
+
+  // Revoke existing invite if present
+  if (existingInvite) {
+    await db
+      .update(invite)
+      .set({
+        status: "revoked",
+        revokedAt: new Date(),
+      })
+      .where(eq(invite.id, existingInvite.id));
+  }
+
+  // Create new invite
+  const newInvite = await db
+    .insert(invite)
+    .values({
+      propertyId: data.propertyId,
+      ownerId: session.user.id,
+      tenantId: data.tenantId,
+      inviteeEmail: data.inviteeEmail,
+      inviteeName: data.inviteeName,
+      role: "tenant",
+      status: "pending",
+      token,
+      expiresAt,
+    })
+    .returning()
+    .then((rows) => rows[0]);
+
+  if (!newInvite) {
+    return { success: false, message: ERRORS.FAILED_TO_CREATE };
+  }
+
+  return { success: true, data: newInvite };
+};
+
+export const getInviteByIdDAL = cache(
+  async (inviteId: string): Promise<GetInviteResult> => {
+    // Start both operations immediately - query runs while auth resolves
+    const sessionPromise = verifySessionDAL();
+    const queryPromise = db
+      .select({
+        invite: invite,
+        property: property,
+        tenant: tenant,
+      })
+      .from(invite)
+      .leftJoin(property, eq(invite.propertyId, property.id))
+      .leftJoin(tenant, eq(invite.tenantId, tenant.id))
+      .where(eq(invite.id, inviteId))
+      .limit(1);
+
+    const session = await sessionPromise;
+    if (!session) {
+      return { success: false, message: ERRORS.NOT_SIGNED_IN_VIEW };
+    }
+
+    const hasPermission = await canViewInvite(
+      session.user.id,
+      session.user.role as Roles
+    );
+
+    if (!hasPermission) {
+      return { success: false, message: ERRORS.NO_VIEW_PERMISSION };
+    }
+
+    // Query already in flight, just await result
+    const results = await queryPromise;
+    const result = results[0];
+
+    if (!result) {
+      return { success: false, message: ERRORS.INVITE_NOT_FOUND };
+    }
+
+    // Verify ownership
+    if (result.invite.ownerId !== session.user.id) {
+      return { success: false, message: ERRORS.NO_VIEW_THIS_INVITE };
+    }
+
+    return { success: true, data: buildInviteWithDetails(result) };
+  }
+);
+
+export const getInviteByTokenDAL = cache(
+  async (tokenValue: string): Promise<GetInviteResult> => {
+    const results = await db
+      .select({
+        invite: invite,
+        property: property,
+        tenant: tenant,
+      })
+      .from(invite)
+      .leftJoin(property, eq(invite.propertyId, property.id))
+      .leftJoin(tenant, eq(invite.tenantId, tenant.id))
+      .where(eq(invite.token, tokenValue))
+      .limit(1);
+
+    const result = results[0];
+
+    if (!result) {
+      return { success: false, message: ERRORS.INVITE_NOT_FOUND_OR_EXPIRED };
+    }
+
+    const inviteRecord = result.invite;
+
+    // Check if expired
+    if (inviteRecord.expiresAt && new Date() > inviteRecord.expiresAt) {
+      // Auto-update status to expired if still pending
+      if (inviteRecord.status === "pending") {
+        await db
+          .update(invite)
+          .set({ status: "expired" })
+          .where(eq(invite.id, inviteRecord.id));
+      }
+
+      return { success: false, message: ERRORS.INVITE_EXPIRED };
+    }
+
+    // Check if already used or revoked
+    if (inviteRecord.status !== "pending") {
+      return {
+        success: false,
+        message: `This invitation has already been ${inviteRecord.status}.`,
+      };
+    }
+
+    return { success: true, data: buildInviteWithDetails(result) };
+  }
+);
+
+export const listInvitesByOwnerDAL = cache(async () => {
+  const session = await verifySessionDAL();
+
+  if (!session) {
+    return { success: false as const, message: ERRORS.NOT_SIGNED_IN_LIST };
+  }
+
+  // Run permission check and query in parallel
+  const [hasPermission, results] = await Promise.all([
+    canListInvites(session.user.id, session.user.role as Roles),
+    db
+      .select({
+        invite: invite,
+        property: property,
+        tenant: tenant,
+      })
+      .from(invite)
+      .leftJoin(property, eq(invite.propertyId, property.id))
+      .leftJoin(tenant, eq(invite.tenantId, tenant.id))
+      .where(eq(invite.ownerId, session.user.id))
+      .orderBy(desc(invite.createdAt)),
+  ]);
+
+  if (!hasPermission) {
+    return { success: false as const, message: ERRORS.NO_LIST_PERMISSION };
+  }
+
+  const invites = results.map(buildInviteWithDetails);
+
+  return { success: true as const, data: invites };
+});
+
+export const updateInviteStatusDAL = async (
+  inviteId: string,
+  status: "accepted" | "revoked" | "expired"
+): Promise<UpdateInviteResult> => {
+  // Start both operations immediately
+  const sessionPromise = verifySessionDAL();
+  const invitePromise = db
+    .select()
+    .from(invite)
+    .where(eq(invite.id, inviteId))
+    .limit(1);
+
+  const session = await sessionPromise;
+  if (!session) {
+    return { success: false, message: ERRORS.NOT_SIGNED_IN_UPDATE };
+  }
+
+  const inviteRows = await invitePromise;
+  const inviteRecord = inviteRows[0];
+
+  if (!inviteRecord) {
+    return { success: false, message: ERRORS.INVITE_NOT_FOUND };
+  }
+
+  // Verify ownership (unless accepting - which would be done by the invitee)
+  if (status !== "accepted" && inviteRecord.ownerId !== session.user.id) {
+    return { success: false, message: ERRORS.NO_UPDATE_THIS_INVITE };
+  }
+
+  const updateData: Partial<InviteInsert> = { status };
+
+  if (status === "accepted") {
+    updateData.acceptedAt = new Date();
+  } else if (status === "revoked") {
+    updateData.revokedAt = new Date();
+  }
+
+  const updatedInvite = await db
+    .update(invite)
+    .set(updateData)
+    .where(eq(invite.id, inviteId))
+    .returning()
+    .then((rows) => rows[0]);
+
+  if (!updatedInvite) {
+    return { success: false, message: ERRORS.FAILED_TO_UPDATE };
+  }
+
+  return { success: true, data: updatedInvite };
+};
+
+export const revokeInviteDAL = async (
+  inviteId: string
+): Promise<UpdateInviteResult> => {
+  return updateInviteStatusDAL(inviteId, "revoked");
+};
