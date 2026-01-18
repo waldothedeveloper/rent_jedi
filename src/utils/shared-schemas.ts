@@ -169,3 +169,18 @@ export const unitSelectionSchema = z.object({
 export const createTenantSchema = tenantBasicInfoSchema
   .and(leaseDatesSchema)
   .and(unitSelectionSchema);
+
+export const sendInvitationSchema = z.object({
+  tenantId: z.uuid("Invalid tenant ID."),
+  unitId: z.uuid("Invalid unit ID."),
+  propertyId: z.uuid("Invalid property ID."),
+});
+
+export const createPendingInviteSchema = z.object({
+  tenantId: z.uuid("Invalid tenant ID."),
+  propertyId: z.uuid("Invalid property ID."),
+});
+
+export const invitationChoiceSchema = z.object({
+  invitationChoice: z.enum(["now", "later"]),
+});

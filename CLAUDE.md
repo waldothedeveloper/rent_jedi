@@ -101,6 +101,24 @@ User (Owner)
 4. Show feedback with Sonner toast notifications
 5. Use DAL (Data Access Layer) functions in `/src/dal/` for DB operations
 
+### Zod v4 API Guidelines
+
+**IMPORTANT:** This project uses Zod v4. Always use the v4 API, never older patterns.
+
+**UUID validation:**
+```typescript
+// ✅ CORRECT - Zod v4
+z.uuid()
+
+// ❌ WRONG - Old Zod pattern, DO NOT USE
+z.string().uuid()
+```
+
+**Other Zod v4 patterns:**
+- Use `z.email()` instead of `z.string().email()`
+- Use `z.url()` instead of `z.string().url()`
+- Use `z.cuid()` instead of `z.string().cuid()`
+
 ### useEffect Guidelines
 
 **Avoid `useEffect` for form field dependencies and state updates.** The author strongly prefers avoiding `useEffect` unless absolutely necessary.

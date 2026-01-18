@@ -12,6 +12,7 @@ import { relations, sql } from "drizzle-orm";
 
 import { EMAILREGEX } from "@/lib/utils";
 import { property } from "./properties-schema";
+import { tenant } from "./tenants-schema";
 import { user } from "./auth-schema";
 
 export const inviteStatusEnum = pgEnum("invite_status", [
@@ -36,6 +37,9 @@ export const invite = pgTable(
     managerId: text("manager_id").references(() => user.id, {
       onDelete: "set null",
     }),
+    tenantId: uuid("tenant_id").references(() => tenant.id, {
+      onDelete: "cascade",
+    }),
     inviteeEmail: text("invitee_email").notNull(),
     inviteeName: text("invitee_name"),
     role: inviteRoleEnum("role").notNull(),
@@ -54,6 +58,7 @@ export const invite = pgTable(
     index("invite_property_id_idx").on(table.propertyId),
     index("invite_owner_id_idx").on(table.ownerId),
     index("invite_manager_id_idx").on(table.managerId),
+    index("invite_tenant_id_idx").on(table.tenantId),
     index("invite_status_idx").on(table.status),
     uniqueIndex("invite_property_email_uid").on(
       table.propertyId,
@@ -78,5 +83,9 @@ export const inviteRelations = relations(invite, ({ one }) => ({
   manager: one(user, {
     fields: [invite.managerId],
     references: [user.id],
+  }),
+  tenant: one(tenant, {
+    fields: [invite.tenantId],
+    references: [tenant.id],
   }),
 }));

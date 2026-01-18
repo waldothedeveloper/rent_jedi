@@ -3,6 +3,7 @@
 import { ChevronLeft, ChevronRight, User } from "lucide-react";
 import { formatCurrency, formatDate } from "@/utils/form-helpers";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { TenantWithDetails } from "@/dal/tenants";
 import { TenantsHeader } from "./tenants-header";
@@ -20,7 +21,7 @@ export function TenantsList({ tenants }: TenantsListProps) {
 
   return (
     <div className="flex h-full flex-col gap-6">
-      <TenantsHeader />
+      <TenantsHeader selectedTenant={selectedTenant ?? null} />
       <div className="flex min-h-0 flex-1 flex-col gap-6 md:flex-row">
         {selectedTenantId && (
           <div className="flex items-center md:hidden">
@@ -39,7 +40,7 @@ export function TenantsList({ tenants }: TenantsListProps) {
         <aside
           className={cn(
             "w-full shrink-0 overflow-y-auto md:w-96",
-            selectedTenantId ? "hidden md:block" : "block"
+            selectedTenantId ? "hidden md:block" : "block",
           )}
         >
           <ul
@@ -52,7 +53,9 @@ export function TenantsList({ tenants }: TenantsListProps) {
                   type="button"
                   className={cn(
                     "relative flex w-full items-center justify-between gap-x-6 px-4 py-5 text-left hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 sm:px-6",
-                    selectedTenantId === tenant.id && "bg-muted"
+                    selectedTenantId === tenant.id && "bg-muted",
+                    tenant.tenantStatus === "draft" &&
+                      "bg-destructive/8 hover:bg-destructive/18",
                   )}
                   aria-current={
                     selectedTenantId === tenant.id ? "true" : undefined
@@ -67,20 +70,25 @@ export function TenantsList({ tenants }: TenantsListProps) {
                       />
                     </div>
                     <div className="min-w-0 flex-auto">
-                      <p className="text-sm/6 font-semibold text-foreground">
-                        <span className="absolute inset-x-0 -top-px bottom-0" />
-                        {tenant.name}
-                      </p>
+                      <span className="absolute inset-x-0 -top-px bottom-0" />
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm/6 font-semibold text-foreground">
+                          {tenant.name}
+                        </p>
+                      </div>
                       <p className="mt-1 flex text-xs/5 text-muted-foreground">
-                        {tenant.property ? (
+                        {tenant.property && (
                           <span className="truncate">
                             {tenant.property.name}
                             {tenant.unit && ` · ${tenant.unit.unitNumber}`}
                           </span>
-                        ) : (
-                          <span className="truncate">No property assigned</span>
                         )}
                       </p>
+                      {tenant.tenantStatus === "draft" && (
+                        <Badge variant="destructive">
+                          Finish Tenant Profile
+                        </Badge>
+                      )}
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-x-4">
@@ -107,7 +115,7 @@ export function TenantsList({ tenants }: TenantsListProps) {
         <main
           className={cn(
             "relative z-0 flex-1 overflow-y-auto focus:outline-hidden shadow-xs outline -outline-offset-1 outline-border/50 rounded-xl",
-            selectedTenantId ? "block" : "hidden md:block"
+            selectedTenantId ? "block" : "hidden md:block",
           )}
         >
           {selectedTenant ? (
@@ -228,7 +236,7 @@ export function TenantsList({ tenants }: TenantsListProps) {
                         </dt>
                         <dd className="mt-1 text-sm text-foreground">
                           {formatCurrency(
-                            selectedTenant.unit?.securityDepositAmount
+                            selectedTenant.unit?.securityDepositAmount,
                           )}
                         </dd>
                       </div>

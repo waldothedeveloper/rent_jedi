@@ -1,6 +1,6 @@
 "use client";
 
-import { Pen, Plus, Settings, Trash2 } from "lucide-react";
+import { Mail, Pen, Plus, Settings, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -10,8 +10,47 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
+import type { TenantWithDetails } from "@/dal/tenants";
+import { sendTenantInvitation } from "@/app/actions/invites";
+import { toast } from "sonner";
+import { useState } from "react";
 
-export function TenantsHeader() {
+interface TenantsHeaderProps {
+  selectedTenant: TenantWithDetails | null;
+}
+
+export function TenantsHeader({ selectedTenant }: TenantsHeaderProps) {
+  const [isResending, setIsResending] = useState(false);
+
+  const handleResendInvitation = async () => {
+    if (!selectedTenant?.unitId || !selectedTenant?.property?.id) {
+      toast.error("Tenant must be assigned to a unit before sending invitation");
+      return;
+    }
+    if (!selectedTenant?.email) {
+      toast.error("Tenant does not have an email address");
+      return;
+    }
+
+    setIsResending(true);
+    try {
+      const result = await sendTenantInvitation({
+        tenantId: selectedTenant.id,
+        unitId: selectedTenant.unitId,
+        propertyId: selectedTenant.property.id,
+      });
+      if (result.success) {
+        toast.success("Invitation sent successfully");
+      } else {
+        toast.error(result.message || "Failed to send invitation");
+      }
+    } catch {
+      toast.error("Failed to send invitation");
+    } finally {
+      setIsResending(false);
+    }
+  };
+
   return (
     <div className="border-b border-muted pb-5 flex items-center justify-between">
       <h3 className="text-base font-semibold text-foreground dark:text-background">
@@ -35,19 +74,30 @@ export function TenantsHeader() {
                 Add Tenant
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link
-                href="/owners/tenants/add-tenant"
-                className="flex items-center gap-1.5 cursor-pointer"
-              >
-                <Pen className="size-4" />
-                Edit Tenant
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Trash2 className="size-4" />
-              Delete Tenant
-            </DropdownMenuItem>
+            {selectedTenant && (
+              <>
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/owners/tenants/add-tenant"
+                    className="flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Pen className="size-4" />
+                    Edit Tenant
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleResendInvitation}
+                  disabled={isResending}
+                >
+                  <Mail className="size-4" />
+                  {isResending ? "Sending..." : "Re-send Invitation"}
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Trash2 className="size-4" />
+                  Delete Tenant
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
         <div className="hidden sm:flex gap-2">
@@ -57,19 +107,32 @@ export function TenantsHeader() {
               Add Tenant
             </Link>
           </Button>
-          <Button variant="ghost" asChild>
-            <Link
-              className="flex items-center gap-1.5"
-              href="/owners/tenants/add-tenant"
-            >
-              <Pen aria-hidden="true" className="size-4" />
-              <span>Edit Tenant</span>
-            </Link>
-          </Button>
-          <Button variant="ghost" className="flex items-center">
-            <Trash2 aria-hidden="true" className="size-4" />
-            <span>Delete Tenant</span>
-          </Button>
+          {selectedTenant && (
+            <>
+              <Button variant="ghost" asChild>
+                <Link
+                  className="flex items-center gap-1.5"
+                  href="/owners/tenants/add-tenant"
+                >
+                  <Pen aria-hidden="true" className="size-4" />
+                  <span>Edit Tenant</span>
+                </Link>
+              </Button>
+              <Button
+                variant="ghost"
+                className="flex items-center"
+                onClick={handleResendInvitation}
+                disabled={isResending}
+              >
+                <Mail aria-hidden="true" className="size-4" />
+                <span>{isResending ? "Sending..." : "Re-send Invitation"}</span>
+              </Button>
+              <Button variant="ghost" className="flex items-center">
+                <Trash2 aria-hidden="true" className="size-4" />
+                <span>Delete Tenant</span>
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </div>
