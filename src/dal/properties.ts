@@ -29,6 +29,39 @@ type CreateProperty =
       message: string;
     };
 
+const ERRORS = {
+  NOT_SIGNED_IN: "⛔️ Access Denied. You must be signed in.",
+  NO_CREATE_PROPERTY_PERMISSION:
+    "⛔️ Access Denied. You do not have permission to create a property.",
+  NO_VIEW_PROPERTY_PERMISSION:
+    "⛔️ Access Denied. You do not have permission to view this property.",
+  NO_LIST_PROPERTIES_PERMISSION:
+    "⛔️ Access Denied. You do not have permission to list properties.",
+  NO_UPDATE_PROPERTY_PERMISSION:
+    "⛔️ Access Denied. You do not have permission to update a property.",
+  NO_DELETE_PROPERTY_PERMISSION:
+    "⛔️ Access Denied. You do not have permission to delete a property.",
+  NO_CREATE_UNIT_PERMISSION:
+    "⛔️ Access Denied. You do not have permission to create a unit.",
+  NO_UPDATE_UNIT_PERMISSION:
+    "⛔️ Access Denied. You do not have permission to update units.",
+  PROPERTY_NOT_FOUND: "Property not found.",
+  UNIT_NOT_FOUND: "Unit not found.",
+  NOT_PROPERTY_OWNER:
+    "⛔️ Access Denied. You do not have permission to access this property.",
+  NOT_UNIT_OWNER:
+    "⛔️ Access Denied. You do not have permission to update this unit.",
+  FAILED_TO_CREATE_PROPERTY: "Failed to create property. Please try again.",
+  FAILED_TO_CREATE_UNIT: "Failed to create unit. Please try again.",
+  FAILED_TO_CREATE_UNITS: "Failed to create units. Please try again.",
+  FAILED_TO_UPDATE_PROPERTY: "Failed to update property. Please try again.",
+  FAILED_TO_DELETE_PROPERTY: "Failed to delete property. Please try again.",
+  FAILED_TO_FETCH_PROPERTY: "Failed to fetch property. Please try again.",
+  FAILED_TO_LIST_PROPERTIES: "Failed to list properties. Please try again.",
+  DUPLICATE_UNIT_NAME:
+    "A unit with this name already exists for this property. Please choose a different name.",
+} as const;
+
 /*
 
 ONLY PERMISSION CHECK FUNCTIONS BELOW
@@ -141,8 +174,7 @@ export const createPropertyDAL = async (
     if (!session) {
       return {
         success: false as const,
-        message:
-          "⛔️ Access Denied. You must be signed in to create a property.",
+        message: ERRORS.NOT_SIGNED_IN,
       };
     }
 
@@ -151,8 +183,7 @@ export const createPropertyDAL = async (
     ) {
       return {
         success: false as const,
-        message:
-          "⛔️ Access Denied. You do not have permission to create a property.",
+        message: ERRORS.NO_CREATE_PROPERTY_PERMISSION,
       };
     }
 
@@ -171,9 +202,7 @@ export const createPropertyDAL = async (
       return {
         success: false as const,
         message:
-          error instanceof Error
-            ? error.message
-            : "Failed to create property. Please try again.",
+          error instanceof Error ? error.message : ERRORS.FAILED_TO_CREATE_PROPERTY,
       };
     }
   };
@@ -184,50 +213,52 @@ export const listPropertiesDAL = cache(async () => {
   if (!session) {
     return {
       success: false as const,
-      message: "⛔️ Access Denied. You must be signed in to list properties.",
-    };
-  }
-
-  if (!(await canListProperties(session.user.id, session.user.role as Roles))) {
-    return {
-      success: false,
-      message:
-        "⛔️ Access Denied. You do not have permission to list properties.",
+      message: ERRORS.NOT_SIGNED_IN,
     };
   }
 
   try {
-    // Fetch properties with unit counts using LEFT JOIN
-    const properties = await db
-      .select({
-        id: property.id,
-        ownerId: property.ownerId,
-        name: property.name,
-        description: property.description,
-        propertyStatus: property.propertyStatus,
-        contactEmail: property.contactEmail,
-        contactPhone: property.contactPhone,
-        propertyType: property.propertyType,
-        addressLine1: property.addressLine1,
-        addressLine2: property.addressLine2,
-        city: property.city,
-        state: property.state,
-        unitType: property.unitType,
-        zipCode: property.zipCode,
-        country: property.country,
-        yearBuilt: property.yearBuilt,
-        buildingSqFt: property.buildingSqFt,
-        lotSqFt: property.lotSqFt,
-        createdAt: property.createdAt,
-        updatedAt: property.updatedAt,
-        unitsCount: count(unit.id),
-        bedrooms: sql<number | null>`MAX(${unit.bedrooms})`,
-        bathrooms: sql<number | null>`MAX(${unit.bathrooms})`,
-      })
-      .from(property)
-      .leftJoin(unit, eq(property.id, unit.propertyId))
-      .where(eq(property.ownerId, session.user.id))
-      .groupBy(property.id);
+    // Run permission check and query in parallel
+    const [hasPermission, properties] = await Promise.all([
+      canListProperties(session.user.id, session.user.role as Roles),
+      db
+        .select({
+          id: property.id,
+          ownerId: property.ownerId,
+          name: property.name,
+          description: property.description,
+          propertyStatus: property.propertyStatus,
+          contactEmail: property.contactEmail,
+          contactPhone: property.contactPhone,
+          propertyType: property.propertyType,
+          addressLine1: property.addressLine1,
+          addressLine2: property.addressLine2,
+          city: property.city,
+          state: property.state,
+          unitType: property.unitType,
+          zipCode: property.zipCode,
+          country: property.country,
+          yearBuilt: property.yearBuilt,
+          buildingSqFt: property.buildingSqFt,
+          lotSqFt: property.lotSqFt,
+          createdAt: property.createdAt,
+          updatedAt: property.updatedAt,
+          unitsCount: count(unit.id),
+          bedrooms: sql<number | null>`MAX(${unit.bedrooms})`,
+          bathrooms: sql<number | null>`MAX(${unit.bathrooms})`,
+        })
+        .from(property)
+        .leftJoin(unit, eq(property.id, unit.propertyId))
+        .where(eq(property.ownerId, session.user.id))
+        .groupBy(property.id),
+    ]);
+
+    if (!hasPermission) {
+      return {
+        success: false as const,
+        message: ERRORS.NO_LIST_PROPERTIES_PERMISSION,
+      };
+    }
 
     return {
       success: true as const,
@@ -237,9 +268,7 @@ export const listPropertiesDAL = cache(async () => {
     return {
       success: false as const,
       message:
-        error instanceof Error
-          ? error.message
-          : "Failed to list properties. Please try again.",
+        error instanceof Error ? error.message : ERRORS.FAILED_TO_LIST_PROPERTIES,
     };
   }
 });
@@ -254,44 +283,48 @@ export const getPropertyByIdDAL = cache(
     };
     message?: string;
   }> => {
-    const session = await verifySessionDAL();
+    // Start session and both queries immediately
+    const sessionPromise = verifySessionDAL();
+    const propertyPromise = db
+      .select()
+      .from(property)
+      .where(eq(property.id, propertyId))
+      .limit(1);
+    const unitsPromise = db
+      .select()
+      .from(unit)
+      .where(eq(unit.propertyId, propertyId));
 
+    const session = await sessionPromise;
     if (!session) {
       return {
         success: false,
-        message: "⛔️ Access Denied. You must be signed in to view a property.",
-      };
-    }
-
-    if (!(await canViewProperty(session.user.id, session.user.role as Roles))) {
-      return {
-        success: false,
-        message:
-          "⛔️ Access Denied. You do not have permission to view this property.",
+        message: ERRORS.NOT_SIGNED_IN,
       };
     }
 
     try {
-      // Fetch the property
-      const propertyRecord = await db
-        .select()
-        .from(property)
-        .where(eq(property.id, propertyId))
-        .limit(1)
-        .then((rows) => rows[0]);
+      // Run permission check and data fetches in parallel
+      const [hasPermission, propertyRows, units] = await Promise.all([
+        canViewProperty(session.user.id, session.user.role as Roles),
+        propertyPromise,
+        unitsPromise,
+      ]);
 
-      if (!propertyRecord) {
+      if (!hasPermission) {
         return {
           success: false,
-          message: "Property not found.",
+          message: ERRORS.NO_VIEW_PROPERTY_PERMISSION,
         };
       }
 
-      // Fetch all units that belong to this property
-      const units = await db
-        .select()
-        .from(unit)
-        .where(eq(unit.propertyId, propertyId));
+      const propertyRecord = propertyRows[0];
+      if (!propertyRecord) {
+        return {
+          success: false,
+          message: ERRORS.PROPERTY_NOT_FOUND,
+        };
+      }
 
       return {
         success: true,
@@ -305,9 +338,7 @@ export const getPropertyByIdDAL = cache(
       return {
         success: false,
         message:
-          error instanceof Error
-            ? error.message
-            : "Failed to fetch property. Please try again.",
+          error instanceof Error ? error.message : ERRORS.FAILED_TO_FETCH_PROPERTY,
       };
     }
   }
@@ -325,15 +356,14 @@ export const createUnitDAL = async (
     if (!session) {
       return {
         success: false,
-        message: "⛔️ Access Denied. You must be signed in to create a unit.",
+        message: ERRORS.NOT_SIGNED_IN,
       };
     }
 
     if (!(await canCreateUnit(session.user.id, session.user.role as Roles))) {
       return {
         success: false,
-        message:
-          "⛔️ Access Denied. You do not have permission to create a unit.",
+        message: ERRORS.NO_CREATE_UNIT_PERMISSION,
       };
     }
 
@@ -349,9 +379,7 @@ export const createUnitDAL = async (
       return {
         success: false,
         message:
-          error instanceof Error
-            ? error.message
-            : "Failed to create unit. Please try again.",
+          error instanceof Error ? error.message : ERRORS.FAILED_TO_CREATE_UNIT,
       };
     }
   };
@@ -368,15 +396,14 @@ export const createUnitsDAL = async (
     if (!session) {
       return {
         success: false,
-        message: "⛔️ Access Denied. You must be signed in to create units.",
+        message: ERRORS.NOT_SIGNED_IN,
       };
     }
 
     if (!(await canCreateUnit(session.user.id, session.user.role as Roles))) {
       return {
         success: false,
-        message:
-          "⛔️ Access Denied. You do not have permission to create units.",
+        message: ERRORS.NO_CREATE_UNIT_PERMISSION,
       };
     }
 
@@ -400,14 +427,13 @@ export const createUnitsDAL = async (
       ) {
         return {
           success: false,
-          message:
-            "A unit with this name already exists for this property. Please choose a different name.",
+          message: ERRORS.DUPLICATE_UNIT_NAME,
         };
       }
 
       return {
         success: false,
-        message: errorMessage || "Failed to create units. Please try again.",
+        message: errorMessage || ERRORS.FAILED_TO_CREATE_UNITS,
       };
     }
   };
@@ -425,42 +451,40 @@ export const updatePropertyDraftDAL = async (
     if (!session) {
       return {
         success: false,
-        message:
-          "⛔️ Access Denied. You must be signed in to update a property.",
-      };
-    }
-
-    if (
-      !(await canUpdateProperty(session.user.id, session.user.role as Roles))
-    ) {
-      return {
-        success: false,
-        message:
-          "⛔️ Access Denied. You do not have permission to update a property.",
+        message: ERRORS.NOT_SIGNED_IN,
       };
     }
 
     try {
-      const existingProperty = await db
-        .select()
-        .from(property)
-        .where(eq(property.id, propertyId))
-        .limit(1)
-        .then((rows) => rows[0]);
+      // Run permission check and existence check in parallel
+      const [hasPermission, existingProperty] = await Promise.all([
+        canUpdateProperty(session.user.id, session.user.role as Roles),
+        db
+          .select()
+          .from(property)
+          .where(eq(property.id, propertyId))
+          .limit(1)
+          .then((rows) => rows[0]),
+      ]);
+
+      if (!hasPermission) {
+        return {
+          success: false,
+          message: ERRORS.NO_UPDATE_PROPERTY_PERMISSION,
+        };
+      }
 
       if (!existingProperty) {
         return {
           success: false,
-          message:
-            "The property you are trying to update does not belongs to this user or does not exist.",
+          message: ERRORS.PROPERTY_NOT_FOUND,
         };
       }
 
       if (existingProperty.ownerId !== session.user.id) {
         return {
           success: false,
-          message:
-            "⛔️ Access Denied. You do not have permission to update this property.",
+          message: ERRORS.NOT_PROPERTY_OWNER,
         };
       }
 
@@ -483,9 +507,7 @@ export const updatePropertyDraftDAL = async (
       return {
         success: false,
         message:
-          error instanceof Error
-            ? error.message
-            : "Failed to update property. Please try again.",
+          error instanceof Error ? error.message : ERRORS.FAILED_TO_UPDATE_PROPERTY,
       };
     }
   };
@@ -504,8 +526,7 @@ export const getDraftPropertyByOwnerDAL = cache(
     if (!session) {
       return {
         success: false,
-        message:
-          "⛔️ Access Denied. You must be signed in to get draft property.",
+        message: ERRORS.NOT_SIGNED_IN,
       };
     }
 
@@ -566,7 +587,7 @@ export const getDraftPropertyByOwnerDAL = cache(
         message:
           error instanceof Error
             ? error.message
-            : "Failed to fetch draft property. Please try again.",
+            : ERRORS.FAILED_TO_FETCH_PROPERTY,
       };
     }
   }
@@ -588,54 +609,56 @@ export const getPropertyWithUnitsCountDAL = cache(
     if (!session) {
       return {
         success: false,
-        message: "⛔️ Access Denied. You must be signed in to view property.",
-      };
-    }
-
-    if (!(await canViewProperty(session.user.id, session.user.role as Roles))) {
-      return {
-        success: false,
-        message:
-          "⛔️ Access Denied. You do not have permission to view this property.",
+        message: ERRORS.NOT_SIGNED_IN,
       };
     }
 
     try {
-      // Fetch property with unit count
-      const result = await db
-        .select({
-          id: property.id,
-          ownerId: property.ownerId,
-          name: property.name,
-          description: property.description,
-          propertyStatus: property.propertyStatus,
-          contactEmail: property.contactEmail,
-          contactPhone: property.contactPhone,
-          propertyType: property.propertyType,
-          addressLine1: property.addressLine1,
-          addressLine2: property.addressLine2,
-          city: property.city,
-          state: property.state,
-          unitType: property.unitType,
-          zipCode: property.zipCode,
-          country: property.country,
-          yearBuilt: property.yearBuilt,
-          buildingSqFt: property.buildingSqFt,
-          lotSqFt: property.lotSqFt,
-          createdAt: property.createdAt,
-          updatedAt: property.updatedAt,
-          unitsCount: count(unit.id),
-        })
-        .from(property)
-        .leftJoin(unit, eq(property.id, unit.propertyId))
-        .where(eq(property.id, propertyId))
-        .groupBy(property.id)
-        .limit(1);
+      // Run permission check and query in parallel
+      const [hasPermission, result] = await Promise.all([
+        canViewProperty(session.user.id, session.user.role as Roles),
+        db
+          .select({
+            id: property.id,
+            ownerId: property.ownerId,
+            name: property.name,
+            description: property.description,
+            propertyStatus: property.propertyStatus,
+            contactEmail: property.contactEmail,
+            contactPhone: property.contactPhone,
+            propertyType: property.propertyType,
+            addressLine1: property.addressLine1,
+            addressLine2: property.addressLine2,
+            city: property.city,
+            state: property.state,
+            unitType: property.unitType,
+            zipCode: property.zipCode,
+            country: property.country,
+            yearBuilt: property.yearBuilt,
+            buildingSqFt: property.buildingSqFt,
+            lotSqFt: property.lotSqFt,
+            createdAt: property.createdAt,
+            updatedAt: property.updatedAt,
+            unitsCount: count(unit.id),
+          })
+          .from(property)
+          .leftJoin(unit, eq(property.id, unit.propertyId))
+          .where(eq(property.id, propertyId))
+          .groupBy(property.id)
+          .limit(1),
+      ]);
+
+      if (!hasPermission) {
+        return {
+          success: false,
+          message: ERRORS.NO_VIEW_PROPERTY_PERMISSION,
+        };
+      }
 
       if (result.length === 0) {
         return {
           success: false,
-          message: "Property not found.",
+          message: ERRORS.PROPERTY_NOT_FOUND,
         };
       }
 
@@ -645,8 +668,7 @@ export const getPropertyWithUnitsCountDAL = cache(
       if (propertyData.ownerId !== session.user.id) {
         return {
           success: false,
-          message:
-            "⛔️ Access Denied. You do not have permission to view this property.",
+          message: ERRORS.NOT_PROPERTY_OWNER,
         };
       }
 
@@ -662,9 +684,7 @@ export const getPropertyWithUnitsCountDAL = cache(
       return {
         success: false,
         message:
-          error instanceof Error
-            ? error.message
-            : "Failed to fetch property. Please try again.",
+          error instanceof Error ? error.message : ERRORS.FAILED_TO_FETCH_PROPERTY,
       };
     }
   }
@@ -683,45 +703,45 @@ export const updateUnitDAL = async (
     if (!session) {
       return {
         success: false,
-        message: "⛔️ Access Denied. You must be signed in to update a unit.",
-      };
-    }
-
-    // Verify permission
-    if (!(await canCreateUnit(session.user.id, session.user.role as Roles))) {
-      return {
-        success: false,
-        message:
-          "⛔️ Access Denied. You do not have permission to update units.",
+        message: ERRORS.NOT_SIGNED_IN,
       };
     }
 
     try {
-      // Verify the unit belongs to a property owned by this user
-      const existingUnit = await db
-        .select({
-          unitId: unit.id,
-          propertyId: unit.propertyId,
-          ownerId: property.ownerId,
-        })
-        .from(unit)
-        .innerJoin(property, eq(unit.propertyId, property.id))
-        .where(eq(unit.id, unitId))
-        .limit(1)
-        .then((rows) => rows[0]);
+      // Run permission check and unit existence check in parallel
+      const [hasPermission, existingUnit] = await Promise.all([
+        canCreateUnit(session.user.id, session.user.role as Roles),
+        db
+          .select({
+            unitId: unit.id,
+            propertyId: unit.propertyId,
+            ownerId: property.ownerId,
+          })
+          .from(unit)
+          .innerJoin(property, eq(unit.propertyId, property.id))
+          .where(eq(unit.id, unitId))
+          .limit(1)
+          .then((rows) => rows[0]),
+      ]);
+
+      if (!hasPermission) {
+        return {
+          success: false,
+          message: ERRORS.NO_UPDATE_UNIT_PERMISSION,
+        };
+      }
 
       if (!existingUnit) {
         return {
           success: false,
-          message: "Unit not found.",
+          message: ERRORS.UNIT_NOT_FOUND,
         };
       }
 
       if (existingUnit.ownerId !== session.user.id) {
         return {
           success: false,
-          message:
-            "⛔️ Access Denied. You do not have permission to update this unit.",
+          message: ERRORS.NOT_UNIT_OWNER,
         };
       }
 
@@ -741,9 +761,7 @@ export const updateUnitDAL = async (
       return {
         success: false,
         message:
-          error instanceof Error
-            ? error.message
-            : "Failed to update unit. Please try again.",
+          error instanceof Error ? error.message : ERRORS.FAILED_TO_CREATE_UNIT,
       };
     }
   };
@@ -759,42 +777,40 @@ export const deletePropertyDAL = async (
     if (!session) {
       return {
         success: false,
-        message:
-          "⛔️ Access Denied. You must be signed in to delete a property.",
-      };
-    }
-
-    if (
-      !(await canDeleteProperty(session.user.id, session.user.role as Roles))
-    ) {
-      return {
-        success: false,
-        message:
-          "⛔️ Access Denied. You do not have permission to delete a property.",
+        message: ERRORS.NOT_SIGNED_IN,
       };
     }
 
     try {
-      const existingProperty = await db
-        .select()
-        .from(property)
-        .where(eq(property.id, propertyId))
-        .limit(1)
-        .then((rows) => rows[0]);
+      // Run permission check and existence check in parallel
+      const [hasPermission, existingProperty] = await Promise.all([
+        canDeleteProperty(session.user.id, session.user.role as Roles),
+        db
+          .select()
+          .from(property)
+          .where(eq(property.id, propertyId))
+          .limit(1)
+          .then((rows) => rows[0]),
+      ]);
+
+      if (!hasPermission) {
+        return {
+          success: false,
+          message: ERRORS.NO_DELETE_PROPERTY_PERMISSION,
+        };
+      }
 
       if (!existingProperty) {
         return {
           success: false,
-          message:
-            "The property you are trying to delete does not exist or does not belong to this user.",
+          message: ERRORS.PROPERTY_NOT_FOUND,
         };
       }
 
       if (existingProperty.ownerId !== session.user.id) {
         return {
           success: false,
-          message:
-            "⛔️ Access Denied. You do not have permission to delete this property.",
+          message: ERRORS.NOT_PROPERTY_OWNER,
         };
       }
 
@@ -808,9 +824,7 @@ export const deletePropertyDAL = async (
       return {
         success: false,
         message:
-          error instanceof Error
-            ? error.message
-            : "Failed to delete property. Please try again.",
+          error instanceof Error ? error.message : ERRORS.FAILED_TO_DELETE_PROPERTY,
       };
     }
   };
@@ -833,7 +847,7 @@ export const getPropertiesWithAvailableUnitsDAL = cache(
     if (!session) {
       return {
         success: false,
-        message: "⛔️ Access Denied.",
+        message: ERRORS.NOT_SIGNED_IN,
       };
     }
 
@@ -883,9 +897,7 @@ export const getPropertiesWithAvailableUnitsDAL = cache(
       return {
         success: false,
         message:
-          error instanceof Error
-            ? error.message
-            : "Failed to fetch properties.",
+          error instanceof Error ? error.message : ERRORS.FAILED_TO_LIST_PROPERTIES,
       };
     }
   }
@@ -907,44 +919,44 @@ export const getAvailableUnitsByPropertyDAL = cache(
     if (!session) {
       return {
         success: false,
-        message: "⛔️ Access Denied.",
+        message: ERRORS.NOT_SIGNED_IN,
       };
     }
 
     try {
-      // Verify ownership
-      const propertyRecord = await db
-        .select()
-        .from(property)
-        .where(eq(property.id, propertyId))
-        .limit(1)
-        .then((rows) => rows[0]);
+      // Run property check and units query in parallel
+      const [propertyRecord, availableUnits] = await Promise.all([
+        db
+          .select()
+          .from(property)
+          .where(eq(property.id, propertyId))
+          .limit(1)
+          .then((rows) => rows[0]),
+        db
+          .select({
+            unit: unit,
+          })
+          .from(unit)
+          .leftJoin(
+            tenant,
+            and(eq(unit.id, tenant.unitId), isNull(tenant.leaseEndDate))
+          )
+          .where(and(eq(unit.propertyId, propertyId), isNull(tenant.id))),
+      ]);
 
       if (!propertyRecord) {
         return {
           success: false,
-          message: "Property not found.",
+          message: ERRORS.PROPERTY_NOT_FOUND,
         };
       }
 
       if (propertyRecord.ownerId !== session.user.id) {
         return {
           success: false,
-          message: "⛔️ Access Denied.",
+          message: ERRORS.NOT_PROPERTY_OWNER,
         };
       }
-
-      // Get units without active tenants
-      const availableUnits = await db
-        .select({
-          unit: unit,
-        })
-        .from(unit)
-        .leftJoin(
-          tenant,
-          and(eq(unit.id, tenant.unitId), isNull(tenant.leaseEndDate))
-        )
-        .where(and(eq(unit.propertyId, propertyId), isNull(tenant.id)));
 
       return {
         success: true,

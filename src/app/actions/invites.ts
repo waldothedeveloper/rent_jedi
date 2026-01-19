@@ -35,8 +35,12 @@ export async function sendTenantInvitation(
     return { success: false, errors: error, message: "Validation failed." };
   }
 
-  // Get tenant details
-  const tenantResult = await getTenantByIdDAL(data.tenantId);
+  // Fetch tenant and property details in parallel (independent reads)
+  const [tenantResult, propertyResult] = await Promise.all([
+    getTenantByIdDAL(data.tenantId),
+    getPropertyByIdDAL(data.propertyId),
+  ]);
+
   if (!tenantResult.success || !tenantResult.data) {
     return {
       success: false,
@@ -54,8 +58,6 @@ export async function sendTenantInvitation(
     };
   }
 
-  // Get property details
-  const propertyResult = await getPropertyByIdDAL(data.propertyId);
   if (!propertyResult.success || !propertyResult.data) {
     return {
       success: false,

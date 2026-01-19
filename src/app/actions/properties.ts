@@ -701,18 +701,22 @@ export const updateMultipleUnits = async (
     const toUpdate = updates.filter((u) => u.unitId);
     const toCreate = updates.filter((u) => !u.unitId);
 
-    // Update existing units
-    for (const { unitId, unitData } of toUpdate) {
-      const result = await updateUnit(unitId!, unitData);
-      if (!result.success) {
+    // Update existing units in parallel (independent writes)
+    if (toUpdate.length > 0) {
+      const updateResults = await Promise.all(
+        toUpdate.map(({ unitId, unitData }) => updateUnit(unitId!, unitData))
+      );
+
+      const failedUpdate = updateResults.find((r) => !r.success);
+      if (failedUpdate) {
         return {
           success: false,
-          message: result.message || `Failed to update unit ${unitId}`,
+          message: failedUpdate.message || "Failed to update unit",
         };
       }
     }
 
-    // Create new units
+    // Create new units (already batched in DAL)
     if (toCreate.length > 0) {
       const unitsData = toCreate.map(({ unitData }) => ({
         propertyId,
