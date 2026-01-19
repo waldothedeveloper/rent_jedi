@@ -23,9 +23,8 @@ export const metadata: Metadata = {
     "A ridiculously simple rental management platform for owners and real state pals",
 };
 
-const Analytics = dynamic(
-  () => import("@vercel/analytics/react").then((m) => m.Analytics),
-  { ssr: false },
+const Analytics = dynamic(() =>
+  import("@vercel/analytics/react").then((m) => m.Analytics),
 );
 
 export default function RootLayout({
