@@ -27,6 +27,33 @@ export type TenantWithDetails = typeof tenant.$inferSelect & {
   property?: typeof property.$inferSelect | null;
 };
 
+const ERRORS = {
+  NOT_SIGNED_IN: "⛔️ Access Denied. You must be signed in.",
+  NO_CREATE_PERMISSION:
+    "⛔️ Access Denied. You do not have permission to create a tenant.",
+  NO_UPDATE_PERMISSION:
+    "⛔️ Access Denied. You do not have permission to update a tenant.",
+  NO_VIEW_PERMISSION:
+    "⛔️ Access Denied. You do not have permission to view a tenant.",
+  NO_LIST_PERMISSION:
+    "⛔️ Access Denied. You do not have permission to list tenants.",
+  NO_ACTIVATE_PERMISSION:
+    "⛔️ Access Denied. You do not have permission to activate a tenant.",
+  TENANT_NOT_FOUND: "Tenant not found.",
+  NOT_TENANT_OWNER:
+    "⛔️ Access Denied. You do not have permission to access this tenant.",
+  NOT_DRAFT_STATUS: "Cannot update tenant where status is not draft.",
+  NOT_DRAFT_ACTIVATE: "Cannot activate a tenant that is not in draft status.",
+  EMAIL_OR_PHONE_REQUIRED:
+    "Either email or phone is required. Please provide at least one of them.",
+  UNIT_HAS_ACTIVE_TENANT: "This unit already has an active tenant.",
+  FAILED_TO_CREATE: "Failed to create tenant draft.",
+  FAILED_TO_UPDATE: "Failed to update tenant draft.",
+  FAILED_TO_ACTIVATE: "Failed to activate tenant.",
+  FAILED_TO_FETCH: "Failed to fetch tenant.",
+  FAILED_TO_LIST: "Failed to fetch tenants.",
+} as const;
+
 /*
 
 ONLY PERMISSION CHECK FUNCTIONS BELOW
@@ -231,15 +258,14 @@ export const createTenantDraftDAL = async (data: {
     if (!session) {
       return {
         success: false,
-        message: "⛔️ Access Denied. You must be signed in.",
+        message: ERRORS.NOT_SIGNED_IN,
       };
     }
 
     if (!(await canCreateTenant(session.user.id, session.user.role as Roles))) {
       return {
         success: false as const,
-        message:
-          "⛔️ Access Denied. You do not have permission to create a tenant.",
+        message: ERRORS.NO_CREATE_PERMISSION,
       };
     }
 
@@ -247,8 +273,7 @@ export const createTenantDraftDAL = async (data: {
       if (!data.email && !data.phone) {
         return {
           success: false,
-          message:
-            "Either email or phone is required. Please provide at least one of them.",
+          message: ERRORS.EMAIL_OR_PHONE_REQUIRED,
         };
       }
 
@@ -268,10 +293,7 @@ export const createTenantDraftDAL = async (data: {
       console.error("[createTenantDraftDAL] Error:", error);
       return {
         success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Failed to create tenant draft.",
+        message: error instanceof Error ? error.message : ERRORS.FAILED_TO_CREATE,
       };
     }
   };
@@ -292,42 +314,44 @@ export const updateTenantDraftDAL = async (
     if (!session) {
       return {
         success: false,
-        message: "⛔️ Access Denied.",
-      };
-    }
-
-    if (!(await canUpdateTenant(session.user.id, session.user.role as Roles))) {
-      return {
-        success: false as const,
-        message:
-          "⛔️ Access Denied. You do not have permission to update a tenant.",
+        message: ERRORS.NOT_SIGNED_IN,
       };
     }
 
     try {
-      const existingTenant = await db
-        .select()
-        .from(tenant)
-        .where(eq(tenant.id, tenantId))
-        .limit(1)
-        .then((rows) => rows[0]);
+      // Run permission check and tenant existence check in parallel
+      const [hasPermission, existingTenant] = await Promise.all([
+        canUpdateTenant(session.user.id, session.user.role as Roles),
+        db
+          .select()
+          .from(tenant)
+          .where(eq(tenant.id, tenantId))
+          .limit(1)
+          .then((rows) => rows[0]),
+      ]);
+
+      if (!hasPermission) {
+        return {
+          success: false as const,
+          message: ERRORS.NO_UPDATE_PERMISSION,
+        };
+      }
 
       if (!existingTenant) {
-        return { success: false, message: "Tenant not found." };
+        return { success: false, message: ERRORS.TENANT_NOT_FOUND };
       }
 
       if (existingTenant.ownerId !== session.user.id) {
         return {
           success: false,
-          message:
-            "⛔️ Access Denied. You do not have permission to update this tenant.",
+          message: ERRORS.NOT_TENANT_OWNER,
         };
       }
 
       if (existingTenant.tenantStatus !== "draft") {
         return {
           success: false,
-          message: "Cannot update tenant where status is not draft.",
+          message: ERRORS.NOT_DRAFT_STATUS,
         };
       }
 
@@ -345,10 +369,7 @@ export const updateTenantDraftDAL = async (
       console.error("[updateTenantDraftDAL] Error:", error);
       return {
         success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Failed to update tenant draft.",
+        message: error instanceof Error ? error.message : ERRORS.FAILED_TO_UPDATE,
       };
     }
   };
@@ -366,62 +387,59 @@ export const activateTenantDraftDAL = async (
     if (!session) {
       return {
         success: false,
-        message: "⛔️ Access Denied.",
-      };
-    }
-
-    if (!(await canCreateTenant(session.user.id, session.user.role as Roles))) {
-      return {
-        success: false as const,
-        message:
-          "⛔️ Access Denied. You do not have permission to activate a tenant.",
+        message: ERRORS.NOT_SIGNED_IN,
       };
     }
 
     try {
-      const ownershipResult = await verifyUnitOwnershipForTenant(
-        unitId,
-        session.user.id,
-        {
-          notFoundMessage: "⛔️ Access Denied.",
-          notOwnerMessage: "⛔️ Access Denied.",
-        }
-      );
+      // Run permission check, unit ownership, tenant fetch, and availability check in parallel
+      const [hasPermission, ownershipResult, existingTenant, availabilityResult] =
+        await Promise.all([
+          canCreateTenant(session.user.id, session.user.role as Roles),
+          verifyUnitOwnershipForTenant(unitId, session.user.id, {
+            notFoundMessage: ERRORS.NOT_SIGNED_IN,
+            notOwnerMessage: ERRORS.NOT_SIGNED_IN,
+          }),
+          db
+            .select()
+            .from(tenant)
+            .where(eq(tenant.id, tenantId))
+            .limit(1)
+            .then((rows) => rows[0]),
+          ensureUnitHasNoActiveTenant(unitId, {
+            tenantStatus: "active",
+            message: ERRORS.UNIT_HAS_ACTIVE_TENANT,
+          }),
+        ]);
+
+      if (!hasPermission) {
+        return {
+          success: false as const,
+          message: ERRORS.NO_ACTIVATE_PERMISSION,
+        };
+      }
 
       if (!ownershipResult.success) {
         return ownershipResult;
       }
 
-      // Verify tenant ownership
-      const existingTenant = await db
-        .select()
-        .from(tenant)
-        .where(eq(tenant.id, tenantId))
-        .limit(1)
-        .then((rows) => rows[0]);
-
       if (!existingTenant) {
-        return { success: false, message: "Tenant not found." };
+        return { success: false, message: ERRORS.TENANT_NOT_FOUND };
       }
 
       if (existingTenant.ownerId !== session.user.id) {
         return {
           success: false,
-          message: "⛔️ Access Denied.",
+          message: ERRORS.NOT_TENANT_OWNER,
         };
       }
 
       if (existingTenant.tenantStatus !== "draft") {
         return {
           success: false,
-          message: "Cannot activate a tenant that is not in draft status.",
+          message: ERRORS.NOT_DRAFT_ACTIVATE,
         };
       }
-
-      const availabilityResult = await ensureUnitHasNoActiveTenant(unitId, {
-        tenantStatus: "active",
-        message: "This unit already has an active tenant.",
-      });
 
       if (!availabilityResult.success) {
         return availabilityResult;
@@ -442,8 +460,7 @@ export const activateTenantDraftDAL = async (
       console.error("[activateTenantDraftDAL] Error:", error);
       return {
         success: false,
-        message:
-          error instanceof Error ? error.message : "Failed to activate tenant.",
+        message: error instanceof Error ? error.message : ERRORS.FAILED_TO_ACTIVATE,
       };
     }
   };
@@ -467,36 +484,39 @@ export const getTenantByIdDAL = cache(
     if (!session) {
       return {
         success: false,
-        message: "⛔️ Access Denied. You must be signed in.",
-      };
-    }
-
-    if (!(await canViewTenant(session.user.id, session.user.role as Roles))) {
-      return {
-        success: false as const,
-        message:
-          "⛔️ Access Denied. You do not have permission to view a tenant.",
+        message: ERRORS.NOT_SIGNED_IN,
       };
     }
 
     try {
-      const result = await db
-        .select({
-          tenant: tenant,
-          unit: unit,
-          property: property,
-        })
-        .from(tenant)
-        .leftJoin(unit, eq(tenant.unitId, unit.id)) // LEFT JOIN for drafts without unitId
-        .leftJoin(property, eq(unit.propertyId, property.id))
-        .where(eq(tenant.id, tenantId))
-        .limit(1)
-        .then((rows) => rows[0]);
+      // Run permission check and query in parallel
+      const [hasPermission, result] = await Promise.all([
+        canViewTenant(session.user.id, session.user.role as Roles),
+        db
+          .select({
+            tenant: tenant,
+            unit: unit,
+            property: property,
+          })
+          .from(tenant)
+          .leftJoin(unit, eq(tenant.unitId, unit.id)) // LEFT JOIN for drafts without unitId
+          .leftJoin(property, eq(unit.propertyId, property.id))
+          .where(eq(tenant.id, tenantId))
+          .limit(1)
+          .then((rows) => rows[0]),
+      ]);
+
+      if (!hasPermission) {
+        return {
+          success: false as const,
+          message: ERRORS.NO_VIEW_PERMISSION,
+        };
+      }
 
       if (!result) {
         return {
           success: false,
-          message: "Tenant not found.",
+          message: ERRORS.TENANT_NOT_FOUND,
         };
       }
 
@@ -504,8 +524,7 @@ export const getTenantByIdDAL = cache(
       if (result.tenant.ownerId !== session.user.id) {
         return {
           success: false,
-          message:
-            "⛔️ Access Denied. You cannot see tenants that do not belong to you.",
+          message: ERRORS.NOT_TENANT_OWNER,
         };
       }
 
@@ -521,8 +540,7 @@ export const getTenantByIdDAL = cache(
       console.error("[getTenantByIdDAL] Error:", error);
       return {
         success: false,
-        message:
-          error instanceof Error ? error.message : "Failed to fetch tenant.",
+        message: error instanceof Error ? error.message : ERRORS.FAILED_TO_FETCH,
       };
     }
   }
@@ -549,30 +567,33 @@ export const listTenantsDAL = cache(
     if (!session) {
       return {
         success: false,
-        message: "⛔️ Access Denied. You must be signed in.",
-      };
-    }
-
-    if (!(await canListTenants(session.user.id, session.user.role as Roles))) {
-      return {
-        success: false,
-        message:
-          "⛔️ Access Denied. You do not have permission to list tenants.",
+        message: ERRORS.NOT_SIGNED_IN,
       };
     }
 
     try {
-      const results = await db
-        .select({
-          tenant: tenant,
-          unit: unit,
-          property: property,
-        })
-        .from(tenant)
-        .leftJoin(unit, eq(tenant.unitId, unit.id)) // LEFT JOIN for drafts without unitId
-        .leftJoin(property, eq(unit.propertyId, property.id))
-        .where(eq(tenant.ownerId, session.user.id)) // Filter by owner
-        .orderBy(desc(tenant.createdAt)); // Most recent first
+      // Run permission check and query in parallel
+      const [hasPermission, results] = await Promise.all([
+        canListTenants(session.user.id, session.user.role as Roles),
+        db
+          .select({
+            tenant: tenant,
+            unit: unit,
+            property: property,
+          })
+          .from(tenant)
+          .leftJoin(unit, eq(tenant.unitId, unit.id)) // LEFT JOIN for drafts without unitId
+          .leftJoin(property, eq(unit.propertyId, property.id))
+          .where(eq(tenant.ownerId, session.user.id)) // Filter by owner
+          .orderBy(desc(tenant.createdAt)), // Most recent first
+      ]);
+
+      if (!hasPermission) {
+        return {
+          success: false,
+          message: ERRORS.NO_LIST_PERMISSION,
+        };
+      }
 
       const formattedResults = results.map((row) => ({
         ...row.tenant,
@@ -588,8 +609,7 @@ export const listTenantsDAL = cache(
       console.error("[listTenantsDAL] Error:", error);
       return {
         success: false,
-        message:
-          error instanceof Error ? error.message : "Failed to fetch tenants.",
+        message: error instanceof Error ? error.message : ERRORS.FAILED_TO_LIST,
       };
     }
   }
