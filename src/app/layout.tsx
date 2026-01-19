@@ -3,9 +3,9 @@ import "./globals.css";
 
 import { Geist, Geist_Mono } from "next/font/google";
 
-import { Analytics } from "@vercel/analytics/next";
 import type { Metadata } from "next";
 import { Toaster } from "@/components/ui/sonner";
+import dynamic from "next/dynamic";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -22,6 +22,11 @@ export const metadata: Metadata = {
   description:
     "A ridiculously simple rental management platform for owners and real state pals",
 };
+
+const Analytics = dynamic(
+  () => import("@vercel/analytics/react").then((m) => m.Analytics),
+  { ssr: false },
+);
 
 export default function RootLayout({
   children,
