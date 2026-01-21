@@ -3,10 +3,19 @@
 import {
   createInviteDAL,
   getInviteByIdDAL,
+  getInviteByTokenDAL,
+  linkTenantToUserDAL,
   revokeInviteDAL,
+  updateInviteStatusDAL,
 } from "@/dal/invites";
 import { getPropertyByIdDAL, verifySessionDAL } from "@/dal/properties";
 
+import {
+  tenantInviteLoginSchema,
+  tenantInviteSignupSchema,
+} from "@/lib/shared-auth-schema";
+
+import { auth } from "@/lib/auth";
 import { getTenantByIdDAL } from "@/dal/tenants";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -48,7 +57,7 @@ export async function sendTenantInvitation(
     };
   }
 
-  const tenantData = tenantResult.data;
+  const { data: tenantData } = tenantResult;
 
   // Tenant must have an email to receive invitation
   if (!tenantData.email) {
@@ -65,7 +74,7 @@ export async function sendTenantInvitation(
     };
   }
 
-  const propertyData = propertyResult.data;
+  const { data: propertyData } = propertyResult;
 
   // Find the specific unit from the property's units array
   const unitData = propertyData.units.find((u) => u.id === data.unitId);
@@ -234,6 +243,10 @@ export async function resendInvitation(inviteId: string) {
 
   const inviteData = existingInvite.data;
 
+  if (!inviteData) {
+    return { success: false, message: "Invitation data not found." };
+  }
+
   if (!inviteData.tenantId) {
     return { success: false, message: "Invitation is not linked to a tenant." };
   }
@@ -280,4 +293,330 @@ export async function revokeInvitation(inviteId: string) {
     success: true,
     message: "Invitation revoked successfully.",
   };
+}
+
+/**
+ * Validate invite token (public - no auth required)
+ * Returns invite details for display on acceptance page
+ */
+export async function validateInviteToken(token: string) {
+  if (!token) {
+    return { success: false, message: "Invitation token is required." };
+  }
+
+  const result = await getInviteByTokenDAL(token);
+
+  if (!result.success) {
+    return { success: false, message: result.message };
+  }
+
+  if (!result.data) {
+    return { success: false, message: "Invitation data not found." };
+  }
+
+  // Return minimal sanitized data for public display (security: no property details)
+  return {
+    success: true,
+    data: {
+      inviteeEmail: result.data.inviteeEmail,
+      inviteeName: result.data.inviteeName,
+      expiresAt: result.data.expiresAt,
+    },
+  };
+}
+
+/**
+ * Accept tenant invite with new account signup
+ */
+export async function acceptTenantInviteWithSignup(
+  input: z.infer<typeof tenantInviteSignupSchema>,
+) {
+  const { success, data, error } = tenantInviteSignupSchema.safeParse(input);
+
+  if (!success) {
+    return { success: false, errors: error, message: "Validation failed." };
+  }
+
+  // Validate invite token
+  const inviteResult = await getInviteByTokenDAL(data.token);
+  if (!inviteResult.success) {
+    return { success: false, message: inviteResult.message };
+  }
+
+  if (!inviteResult.data) {
+    return { success: false, message: "Invitation data not found." };
+  }
+
+  const invite = inviteResult.data;
+
+  // Verify email matches invite (case-insensitive)
+  if (
+    data.email.toLowerCase().trim() !==
+    invite.inviteeEmail.toLowerCase().trim()
+  ) {
+    return {
+      success: false,
+      message: `This invitation was sent to ${invite.inviteeEmail}. Please use that email address.`,
+    };
+  }
+
+  try {
+    // Create user account via Better Auth
+    // The database hook will automatically assign "tenant" role if pending invite exists
+    let signupResult;
+    try {
+      signupResult = await auth.api.signUpEmail({
+        body: {
+          email: data.email,
+          password: data.password,
+          name: data.name,
+        },
+      });
+    } catch (signupError: any) {
+      // Handle duplicate email error
+      if (
+        signupError?.message?.includes("email") ||
+        signupError?.message?.includes("exists") ||
+        signupError?.message?.includes("already")
+      ) {
+        return {
+          success: false,
+          message:
+            "An account with this email already exists. Please try signing in instead.",
+        };
+      }
+      return {
+        success: false,
+        message: signupError?.message || "Failed to create account.",
+      };
+    }
+
+    if (!signupResult || !signupResult.user) {
+      return { success: false, message: "Failed to create account." };
+    }
+
+    const userId = signupResult.user.id;
+
+    // Link tenant record to user account
+    const linkResult = await linkTenantToUserDAL(invite.tenantId!, userId);
+    if (!linkResult.success) {
+      console.error("Failed to link tenant to user:", linkResult.message);
+      // Continue anyway - user account is created, we can fix the link later
+    }
+
+    // Update invite status to accepted
+    await updateInviteStatusDAL(invite.id, "accepted");
+
+    // Send confirmation emails (tenant + landlord)
+    const baseUrl =
+      process.env.NODE_ENV === "development"
+        ? "http://localhost:3000"
+        : `https://${process.env.VERCEL_URL}`;
+
+    // Send emails in parallel (non-blocking)
+    Promise.all([
+      // Email to tenant
+      fetch(`${baseUrl}/api/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: data.email,
+          subject: `Welcome to ${invite.property?.name || "your rental property"}`,
+          template: "tenant-invite-accepted",
+          firstName: data.name.split(" ")[0],
+          propertyName: invite.property?.name || invite.property?.addressLine1,
+          propertyAddress: invite.property
+            ? [
+                invite.property.addressLine1,
+                invite.property.addressLine2,
+                `${invite.property.city}, ${invite.property.state} ${invite.property.zipCode}`,
+              ]
+                .filter(Boolean)
+                .join(", ")
+            : null,
+          unitNumber: undefined,
+        }),
+      }).catch((e) => console.error("Failed to send tenant email:", e)),
+
+      // Email to landlord
+      fetch(`${baseUrl}/api/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: invite.property?.ownerId,
+          subject: `${data.name} accepted your invitation`,
+          template: "tenant-invite-accepted-landlord",
+          tenantName: data.name,
+          propertyName: invite.property?.name || invite.property?.addressLine1,
+          unitNumber: undefined,
+          acceptedAt: new Date().toISOString(),
+        }),
+      }).catch((e) => console.error("Failed to send landlord email:", e)),
+    ]).catch(() => {
+      // Emails are non-critical, don't fail the acceptance
+    });
+
+    revalidatePath("/owners/tenants");
+
+    return {
+      success: true,
+      message: "Account created successfully!",
+      redirect: "/invite/welcome",
+    };
+  } catch (error) {
+    console.error("Error accepting invite with signup:", error);
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : "An error occurred while creating your account.",
+    };
+  }
+}
+
+/**
+ * Accept tenant invite with existing account login
+ */
+export async function acceptTenantInviteWithLogin(
+  input: z.infer<typeof tenantInviteLoginSchema>,
+) {
+  const { success, data, error } = tenantInviteLoginSchema.safeParse(input);
+
+  if (!success) {
+    return { success: false, errors: error, message: "Validation failed." };
+  }
+
+  // Validate invite token
+  const inviteResult = await getInviteByTokenDAL(data.token);
+  if (!inviteResult.success) {
+    return { success: false, message: inviteResult.message };
+  }
+
+  if (!inviteResult.data) {
+    return { success: false, message: "Invitation data not found." };
+  }
+
+  const invite = inviteResult.data;
+
+  try {
+    // Authenticate user
+    let loginResult;
+    try {
+      loginResult = await auth.api.signInEmail({
+        body: {
+          email: data.email,
+          password: data.password,
+        },
+      });
+    } catch (loginError: any) {
+      return {
+        success: false,
+        message:
+          loginError?.message ||
+          "Invalid credentials. Please check your email and password.",
+      };
+    }
+
+    if (!loginResult || !loginResult.user) {
+      return { success: false, message: "Authentication failed." };
+    }
+
+    const user = loginResult.user;
+
+    // Check for role conflicts (block owner/admin)
+    if (user.role !== "tenant") {
+      return {
+        success: false,
+        message: `Your account is registered as ${user.role}. Tenant invitations cannot be accepted by ${user.role} accounts. Please contact support if you need assistance.`,
+      };
+    }
+
+    // Verify email matches invite (case-insensitive)
+    if (
+      user.email.toLowerCase().trim() !==
+      invite.inviteeEmail.toLowerCase().trim()
+    ) {
+      return {
+        success: false,
+        message: `Email mismatch. This invitation was sent to ${invite.inviteeEmail}, but you're trying to sign in with ${user.email}. Please use the correct email or contact
+  your landlord.`
+      };
+    }
+
+    // Link tenant record to user account (if not already linked)
+    const linkResult = await linkTenantToUserDAL(invite.tenantId!, user.id);
+    if (!linkResult.success) {
+      console.error("Failed to link tenant to user:", linkResult.message);
+      // Continue anyway - we can fix the link later
+    }
+
+    // Update invite status to accepted
+    await updateInviteStatusDAL(invite.id, "accepted");
+
+    // Send confirmation emails (tenant + landlord)
+    const baseUrl =
+      process.env.NODE_ENV === "development"
+        ? "http://localhost:3000"
+        : `https://${process.env.VERCEL_URL}`;
+
+    Promise.all([
+      // Email to tenant
+      fetch(`${baseUrl}/api/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: user.email,
+          subject: `Welcome to ${invite.property?.name || "your rental property"}`,
+          template: "tenant-invite-accepted",
+          firstName: user.name.split(" ")[0],
+          propertyName: invite.property?.name || invite.property?.addressLine1,
+          propertyAddress: invite.property
+            ? [
+                invite.property.addressLine1,
+                invite.property.addressLine2,
+                `${invite.property.city}, ${invite.property.state} ${invite.property.zipCode}`,
+              ]
+                .filter(Boolean)
+                .join(", ")
+            : null,
+          unitNumber: undefined,
+        }),
+      }).catch((e) => console.error("Failed to send tenant email:", e)),
+
+      // Email to landlord
+      fetch(`${baseUrl}/api/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: invite.property?.ownerId,
+          subject: `${user.name} accepted your invitation`,
+          template: "tenant-invite-accepted-landlord",
+          tenantName: user.name,
+          propertyName: invite.property?.name || invite.property?.addressLine1,
+          unitNumber: undefined,
+          acceptedAt: new Date().toISOString(),
+        }),
+      }).catch((e) => console.error("Failed to send landlord email:", e)),
+    ]).catch(() => {
+      // Emails are non-critical, don't fail the acceptance
+    });
+
+    revalidatePath("/owners/tenants");
+
+    return {
+      success: true,
+      message: "Invitation accepted successfully!",
+      redirect: "/invite/welcome",
+    };
+  } catch (error) {
+    console.error("Error accepting invite with login:", error);
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : "An error occurred while accepting the invitation.",
+    };
+  }
 }

@@ -1,11 +1,11 @@
 "server only";
 
-import crypto from "crypto";
 import { and, desc, eq } from "drizzle-orm";
 
 import type { Roles } from "@/types/roles";
 import { auth } from "@/lib/auth";
 import { cache } from "react";
+import crypto from "crypto";
 import { db } from "@/db/drizzle";
 import { invite } from "@/db/schema/invites-schema";
 import { property } from "@/db/schema/properties-schema";
@@ -31,7 +31,7 @@ type CreateInviteResult =
   | { success: false; message: string };
 
 type GetInviteResult =
-  | { success: true; data: InviteWithDetails }
+  | { success: true; data?: InviteWithDetails }
   | { success: false; message: string };
 
 type UpdateInviteResult =
@@ -167,7 +167,7 @@ export const createInviteDAL = async (data: {
 
   const hasPermission = await canCreateInvite(
     session.user.id,
-    session.user.role as Roles
+    session.user.role as Roles,
   );
 
   if (!hasPermission) {
@@ -176,17 +176,13 @@ export const createInviteDAL = async (data: {
 
   // Run all three independent queries in parallel
   const [propertyRows, tenantRows, existingInviteRows] = await Promise.all([
-    db
-      .select()
-      .from(property)
-      .where(eq(property.id, data.propertyId))
-      .limit(1),
+    db.select().from(property).where(eq(property.id, data.propertyId)).limit(1),
     db.select().from(tenant).where(eq(tenant.id, data.tenantId)).limit(1),
     db
       .select()
       .from(invite)
       .where(
-        and(eq(invite.tenantId, data.tenantId), eq(invite.status, "pending"))
+        and(eq(invite.tenantId, data.tenantId), eq(invite.status, "pending")),
       )
       .limit(1),
   ]);
@@ -276,7 +272,7 @@ export const getInviteByIdDAL = cache(
 
     const hasPermission = await canViewInvite(
       session.user.id,
-      session.user.role as Roles
+      session.user.role as Roles,
     );
 
     if (!hasPermission) {
@@ -297,7 +293,7 @@ export const getInviteByIdDAL = cache(
     }
 
     return { success: true, data: buildInviteWithDetails(result) };
-  }
+  },
 );
 
 export const getInviteByTokenDAL = cache(
@@ -344,7 +340,7 @@ export const getInviteByTokenDAL = cache(
     }
 
     return { success: true, data: buildInviteWithDetails(result) };
-  }
+  },
 );
 
 export const listInvitesByOwnerDAL = cache(async () => {
@@ -381,7 +377,7 @@ export const listInvitesByOwnerDAL = cache(async () => {
 
 export const updateInviteStatusDAL = async (
   inviteId: string,
-  status: "accepted" | "revoked" | "expired"
+  status: "accepted" | "revoked" | "expired",
 ): Promise<UpdateInviteResult> => {
   // Start both operations immediately
   const sessionPromise = verifySessionDAL();
@@ -431,7 +427,36 @@ export const updateInviteStatusDAL = async (
 };
 
 export const revokeInviteDAL = async (
-  inviteId: string
+  inviteId: string,
 ): Promise<UpdateInviteResult> => {
   return updateInviteStatusDAL(inviteId, "revoked");
+};
+
+export const linkTenantToUserDAL = async (
+  tenantId: string,
+  userId: string,
+): Promise<{ success: boolean; message?: string }> => {
+  try {
+    const result = await db
+      .update(tenant)
+      .set({ userId })
+      .where(eq(tenant.id, tenantId))
+      .returning()
+      .then((rows) => rows[0]);
+
+    if (!result) {
+      return {
+        success: false,
+        message: "Failed to link tenant to user account.",
+      };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error linking tenant to user:", error);
+    return {
+      success: false,
+      message: "An error occurred while linking tenant to user account.",
+    };
+  }
 };

@@ -55,6 +55,7 @@ Every Next.js App Router route should include:
   - Match dimensions: h-4 for labels, h-9/h-10 for inputs, h-8 for titles
 
 **Example Structure:**
+
 ```
 /route-name/
   ├── page.tsx       # Route component
@@ -64,6 +65,31 @@ Every Next.js App Router route should include:
 ```
 
 **Reference Implementation:** `/src/app/(without-navigation)/owners/properties/add-property/`
+
+### Styling Guidelines
+
+**ALWAYS use CSS variables from `globals.css` instead of hardcoded Tailwind colors.**
+
+**Color Mappings:**
+
+```typescript
+// ✅ CORRECT - Use CSS variable classes
+bg-background       // Instead of bg-gray-50, bg-white
+bg-card             // Instead of bg-white for cards
+text-foreground     // Instead of text-gray-900, text-black
+text-card-foreground // Instead of text-gray-700, text-gray-900 on cards
+text-muted-foreground // Instead of text-gray-600, text-gray-500
+text-primary        // Instead of text-blue-600 for links/primary actions
+border-border       // Instead of border-gray-200, border-gray-300
+
+// ❌ WRONG - Hardcoded Tailwind colors
+bg-gray-50, bg-white, text-gray-900, text-blue-600
+```
+
+**Why CSS Variables:**
+- Ensures consistent theming across light/dark modes
+- Single source of truth defined in `globals.css`
+- Automatic support for future theme customization
 
 ### Authentication Flow
 
@@ -106,15 +132,17 @@ User (Owner)
 **IMPORTANT:** This project uses Zod v4. Always use the v4 API, never older patterns.
 
 **UUID validation:**
+
 ```typescript
 // ✅ CORRECT - Zod v4
-z.uuid()
+z.uuid();
 
 // ❌ WRONG - Old Zod pattern, DO NOT USE
-z.string().uuid()
+z.string().uuid();
 ```
 
 **Other Zod v4 patterns:**
+
 - Use `z.email()` instead of `z.string().email()`
 - Use `z.url()` instead of `z.string().url()`
 - Use `z.cuid()` instead of `z.string().cuid()`
@@ -126,6 +154,7 @@ z.string().uuid()
 **Preferred patterns:**
 
 1. **Inline handlers for dependent field updates:**
+
    ```typescript
    <Select
      value={field.state.value}
@@ -137,6 +166,7 @@ z.string().uuid()
    ```
 
 2. **Extract handler functions for complex logic:**
+
    ```typescript
    const handleFieldChange = async (value: string) => {
      field.handleChange(value);
@@ -146,16 +176,19 @@ z.string().uuid()
    ```
 
 3. **Use refs to track state without causing re-renders:**
+
    ```typescript
    const lastFetchedId = useRef<string | null>(null);
    ```
 
 **Only acceptable `useEffect` uses:**
+
 - Initial data load from localStorage (runs once on mount with empty deps)
 - Cleanup functions for event listeners
 - True side effects that can't be expressed inline
 
 **Never use `useEffect` for:**
+
 - Form field dependencies
 - Fetching data when a field changes (use inline handlers)
 - Resetting fields when another field changes

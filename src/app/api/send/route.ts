@@ -2,6 +2,8 @@ import { EmailVerification } from "@/components/email-templates/email_verificati
 import { PasswordReset } from "@/components/email-templates/password_reset";
 import { PasswordResetConfirmation } from "@/components/email-templates/password_reset_confirmation";
 import { TenantInvitation } from "@/components/email-templates/tenant_invitation";
+import { TenantInviteAccepted } from "@/components/email-templates/tenant_invite_accepted";
+import { TenantInviteAcceptedLandlord } from "@/components/email-templates/tenant_invite_accepted_landlord";
 import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -21,6 +23,8 @@ export async function POST(request: Request) {
       propertyAddress,
       unitNumber,
       ownerName,
+      tenantName,
+      acceptedAt,
     } = body;
 
     if (!to || !subject || !template) {
@@ -74,6 +78,22 @@ export async function POST(request: Request) {
             ownerName,
             inviteUrl,
             expiresInDays: 14,
+          });
+        }
+        case "tenant-invite-accepted": {
+          return TenantInviteAccepted({
+            firstName: firstName ?? "there",
+            propertyName,
+            propertyAddress,
+            unitNumber,
+          });
+        }
+        case "tenant-invite-accepted-landlord": {
+          return TenantInviteAcceptedLandlord({
+            tenantName: tenantName ?? "Your tenant",
+            propertyName,
+            unitNumber,
+            acceptedAt,
           });
         }
         default: {

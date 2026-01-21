@@ -26,12 +26,36 @@ import { loginAction } from "@/app/actions/auth";
 import { loginSchema } from "@/lib/shared-auth-schema";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import {
+  validateInviteToken,
+  acceptTenantInviteWithLogin,
+} from "@/app/actions/invites";
+
+interface LoginFormProps extends React.ComponentProps<"div"> {
+  token?: string;
+  role?: string;
+}
 
 export function LoginForm({
+  token,
+  role,
   className,
   ...props
-}: React.ComponentProps<"div">) {
+}: LoginFormProps) {
   const router = useRouter();
+  const [inviteEmail, setInviteEmail] = useState<string | null>(null);
+
+  // Dynamic messaging based on role
+  const isTenant = role === "tenant";
+  const title = isTenant
+    ? "Sign in to Accept Invitation"
+    : "Login to your Account";
+  const description = isTenant
+    ? "Use your existing Bloom Rent credentials to accept this invitation"
+    : "The sun is up and the soil is waiting. Step back in to see what's growing.";
+  const submitButtonText = isTenant ? "Sign In & Accept" : "Login to Bloom Rent";
+
   const form = useForm({
     defaultValues: {
       email: "",
@@ -46,27 +70,43 @@ export function LoginForm({
       onDynamic: loginSchema,
     },
     onSubmit: async ({ value, formApi }) => {
-      const res = await loginAction(value);
+      const res = token
+        ? await acceptTenantInviteWithLogin({ ...value, token })
+        : await loginAction(value);
 
       if (!res?.success) {
         return toast.error(res?.message ?? "Login failed. Try again.");
       }
 
-      router.push(res.redirectTo ?? "/owners/dashboard");
+      const redirectTo = token
+        ? "/invite/welcome"
+        : (res as any).redirectTo ?? "/owners/dashboard";
+      router.push(redirectTo);
       router.refresh();
       formApi.reset();
     },
   });
 
+  // Validate token on mount and pre-populate email (acceptable useEffect use - initial data load)
+  useEffect(() => {
+    if (token) {
+      validateInviteToken(token).then((result) => {
+        if (result.success && result.data) {
+          const email = result.data.inviteeEmail;
+          setInviteEmail(email);
+          // Update form value
+          form.setFieldValue("email", email);
+        }
+      });
+    }
+  }, [token, form]);
+
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
         <CardHeader className="text-center">
-          <CardTitle className="text-xl">Login to your Account</CardTitle>
-          <CardDescription>
-            The sun is up and the soil is waiting. <br />
-            Step back in to see what’s growing.
-          </CardDescription>
+          <CardTitle className="text-xl">{title}</CardTitle>
+          <CardDescription>{description}</CardDescription>
         </CardHeader>
         <CardContent>
           <form
@@ -102,23 +142,32 @@ export function LoginForm({
               </FieldSeparator>
               <form.Field
                 name="email"
-                children={(field) => (
-                  <Field>
-                    <FieldLabel htmlFor={field.name}>Email</FieldLabel>
-                    <Input
-                      autoComplete="email"
-                      id={field.name}
-                      type="email"
-                      placeholder="m@example.com"
-                      value={field.state.value ?? ""}
-                      onBlur={field.handleBlur}
-                      onChange={(event) =>
-                        field.handleChange(event.target.value)
-                      }
-                    />
-                    <FieldError errors={field.state.meta.errors} />
-                  </Field>
-                )}
+                children={(field) => {
+                  const emailValue = inviteEmail || field.state.value || "";
+
+                  return (
+                    <Field>
+                      <FieldLabel htmlFor={field.name}>Email</FieldLabel>
+                      <Input
+                        autoComplete="email"
+                        id={field.name}
+                        type="email"
+                        placeholder="m@example.com"
+                        value={emailValue}
+                        onBlur={field.handleBlur}
+                        onChange={(event) =>
+                          field.handleChange(event.target.value)
+                        }
+                      />
+                      {inviteEmail && (
+                        <FieldDescription>
+                          This invitation is for {inviteEmail}
+                        </FieldDescription>
+                      )}
+                      <FieldError errors={field.state.meta.errors} />
+                    </Field>
+                  );
+                }}
               />
               <form.Field
                 name="password"
@@ -160,7 +209,7 @@ export function LoginForm({
                       disabled={!canSubmit || isSubmitting || isPristine}
                       className="w-full"
                     >
-                      {isSubmitting ? "Logging in..." : "Login to Bloom Rent"}
+                      {isSubmitting ? "Logging in..." : submitButtonText}
                     </Button>
                   )}
                 />
