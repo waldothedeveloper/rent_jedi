@@ -24,6 +24,8 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import { property } from "@/db/schema/properties-schema";
 import { redirect } from "next/navigation";
+import { invite } from "@/db/schema/invites-schema";
+import { eq } from "drizzle-orm";
 
 type SendResetPasswordPayload = { user: User; url: string; token: string };
 type OnPasswordResetPayload = { user: User };
@@ -112,8 +114,32 @@ export const auth = betterAuth({
     user: {
       create: {
         before: async (user) => {
-          // Atomically set role to 'owner' for all new signups
+          // Check if user email has a pending tenant invite
+          // If yes, assign 'tenant' role; otherwise, assign 'owner' role
           // This runs for BOTH email/password and OAuth signups
+          if (user.email) {
+            const pendingInvite = await db
+              .select()
+              .from(invite)
+              .where(eq(invite.inviteeEmail, user.email.toLowerCase()))
+              .limit(1)
+              .then((rows) => rows[0]);
+
+            if (
+              pendingInvite &&
+              pendingInvite.status === "pending" &&
+              pendingInvite.role === "tenant"
+            ) {
+              return {
+                data: {
+                  ...user,
+                  role: "tenant",
+                },
+              };
+            }
+          }
+
+          // Default to 'owner' role for all other signups
           return {
             data: {
               ...user,

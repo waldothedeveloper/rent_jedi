@@ -19,16 +19,39 @@ import { revalidateLogic, useForm } from "@tanstack/react-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
+import { acceptTenantInviteWithSignup } from "@/app/actions/invites";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { signUpAction } from "@/app/actions/auth";
 import { signUpSchema } from "@/lib/shared-auth-schema";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+
+interface SignupFormProps extends React.ComponentProps<"div"> {
+  token?: string;
+  role?: string;
+}
 
 export function SignupForm({
+  token,
+  role,
   className,
   ...props
-}: React.ComponentProps<"div">) {
+}: SignupFormProps) {
+  const router = useRouter();
+  const [inviteEmail, setInviteEmail] = useState<string | null>(null);
+
+  // Dynamic messaging based on role
+  const isTenant = role === "tenant";
+  const title = isTenant ? "Set Up Your Tenant Account" : "Create your account";
+  const description = isTenant
+    ? "Complete your registration to access your rental dashboard"
+    : "Every great landscape starts with a single place in the sun. Join us and find yours.";
+  const submitButtonText = isTenant
+    ? "Create Tenant Account"
+    : "Join Bloom Rent";
+
   const form = useForm({
     defaultValues: {
       name: "",
@@ -46,9 +69,26 @@ export function SignupForm({
     },
     onSubmit: async ({ value, formApi }) => {
       try {
-        await signUpAction(value);
-        toast.success("Account created");
-        formApi.reset();
+        if (token) {
+          // Tenant invite signup - call acceptTenantInviteWithSignup
+          const result = await acceptTenantInviteWithSignup({
+            ...value,
+            token,
+          });
+
+          if (!result.success) {
+            toast.error(result.message || "Failed to create account");
+            return;
+          }
+
+          toast.success("Account created successfully!");
+          router.push("/invite/welcome");
+        } else {
+          // Regular signup, aka Owner signup....we might need to check for role as well here, idk yet
+          await signUpAction(value);
+          toast.success("Account created");
+          formApi.reset();
+        }
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Something went wrong";
@@ -57,15 +97,29 @@ export function SignupForm({
     },
   });
 
+  // Validate token on mount and pre-populate form (acceptable useEffect use - initial data load)
+  // useEffect(() => {
+  //   if (token) {
+  //     validateInviteToken(token).then((result) => {
+  //       if (result.success && result.data) {
+  //         const email = result.data.inviteeEmail;
+  //         const name = result.data.inviteeName || "";
+  //         setInviteEmail(email);
+  //         setInviteName(name);
+  //         // Update form values
+  //         form.setFieldValue("email", email);
+  //         form.setFieldValue("name", name);
+  //       }
+  //     });
+  //   }
+  // }, [token, form]);
+
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
         <CardHeader className="text-center">
-          <CardTitle className="text-xl">Create your account</CardTitle>
-          <CardDescription>
-            Every great landscape starts with a single place in the sun. Join us
-            and find yours.
-          </CardDescription>
+          <CardTitle className="text-xl">{title}</CardTitle>
+          <CardDescription>{description}</CardDescription>
         </CardHeader>
         <CardContent>
           <form
@@ -98,23 +152,36 @@ export function SignupForm({
               />
               <form.Field
                 name="email"
-                children={(field) => (
-                  <Field>
-                    <FieldLabel htmlFor={field.name}>Email</FieldLabel>
-                    <Input
-                      autoComplete="email"
-                      id={field.name}
-                      type="email"
-                      placeholder="m@example.com"
-                      value={field.state.value ?? ""}
-                      onBlur={field.handleBlur}
-                      onChange={(event) =>
-                        field.handleChange(event.target.value)
-                      }
-                    />
-                    <FieldError errors={field.state.meta.errors} />
-                  </Field>
-                )}
+                children={(field) => {
+                  const emailValue = inviteEmail || field.state.value || "";
+                  const isReadOnly = !!inviteEmail;
+
+                  return (
+                    <Field>
+                      <FieldLabel htmlFor={field.name}>Email</FieldLabel>
+                      <Input
+                        autoComplete="email"
+                        id={field.name}
+                        type="email"
+                        placeholder="m@example.com"
+                        value={emailValue}
+                        readOnly={isReadOnly}
+                        disabled={isReadOnly}
+                        className={isReadOnly ? "bg-muted" : ""}
+                        onBlur={field.handleBlur}
+                        onChange={(event) =>
+                          field.handleChange(event.target.value)
+                        }
+                      />
+                      {isReadOnly && (
+                        <FieldDescription>
+                          This invitation is for this email address
+                        </FieldDescription>
+                      )}
+                      <FieldError errors={field.state.meta.errors} />
+                    </Field>
+                  );
+                }}
               />
               <Field className="grid grid-cols-2 gap-4">
                 <form.Field
@@ -174,7 +241,7 @@ export function SignupForm({
                     >
                       {isSubmitting
                         ? "In progress, please wait..."
-                        : "Join Bloom Rent"}
+                        : submitButtonText}
                     </Button>
                   )}
                 />

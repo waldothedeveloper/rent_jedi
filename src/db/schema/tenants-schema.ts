@@ -29,6 +29,9 @@ export const tenant = pgTable(
     ownerId: text("owner_id")
       .notNull()
       .references(() => user.id, { onDelete: "restrict" }),
+    userId: text("user_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
     name: text("name").notNull(),
     email: text("email"),
     phone: text("phone"),
@@ -44,6 +47,7 @@ export const tenant = pgTable(
   (table) => [
     index("tenant_unit_id_idx").on(table.unitId),
     index("tenant_owner_id_idx").on(table.ownerId),
+    index("tenant_user_id_idx").on(table.userId),
     uniqueIndex("tenant_unit_active_uid")
       .on(table.unitId)
       .where(
