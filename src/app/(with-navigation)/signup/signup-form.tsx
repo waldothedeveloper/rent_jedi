@@ -42,7 +42,6 @@ export function SignupForm({
   const router = useRouter();
   const [inviteEmail, setInviteEmail] = useState<string | null>(null);
 
-  // Dynamic messaging based on role
   const isTenant = role === "tenant";
   const title = isTenant ? "Set Up Your Tenant Account" : "Create your account";
   const description = isTenant
@@ -70,7 +69,6 @@ export function SignupForm({
     onSubmit: async ({ value, formApi }) => {
       try {
         if (token) {
-          // Tenant invite signup - call acceptTenantInviteWithSignup
           const result = await acceptTenantInviteWithSignup({
             ...value,
             token,
@@ -84,9 +82,8 @@ export function SignupForm({
           toast.success("Account created successfully!");
           router.push("/invite/welcome");
         } else {
-          // Regular signup, aka Owner signup....we might need to check for role as well here, idk yet
           await signUpAction(value);
-          toast.success("Account created");
+          toast.success("Account created! Please check your email.");
           formApi.reset();
         }
       } catch (error) {
@@ -252,9 +249,14 @@ export function SignupForm({
                   variant="outline"
                   type="button"
                   onClick={async () => {
+                    // Store role in sessionStorage before OAuth
+                    if (role) {
+                      sessionStorage.setItem("signup_role", role);
+                    }
+
                     await authClient.signIn.social({
                       provider: "google",
-                      callbackURL: "/owners/dashboard",
+                      callbackURL: "/auth-success",
                     });
                   }}
                 >

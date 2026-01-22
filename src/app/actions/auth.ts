@@ -9,6 +9,7 @@ import {
 } from "@/lib/shared-auth-schema";
 
 import { auth } from "@/lib/auth";
+import { getRedirectUrlByRole } from "@/lib/auth-utils";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -22,8 +23,6 @@ type LoginError = {
   statusCode: number;
   name: string;
 };
-
-const OWNERS_DASHBOARD = `/owners/dashboard`;
 
 function isLoginError(e: unknown): e is LoginError {
   return (
@@ -67,6 +66,7 @@ export async function resendVerificationEmailAction() {
   const sessionResponse = await getSessionOrRedirect();
 
   const email = sessionResponse?.user?.email;
+  const role = sessionResponse?.user?.role;
 
   if (!email) {
     return {
@@ -75,7 +75,8 @@ export async function resendVerificationEmailAction() {
     };
   }
 
-  const callbackURL = `${getBaseUrl(headersList)}${OWNERS_DASHBOARD}`;
+  // Use role-based callback URL
+  const callbackURL = `${getBaseUrl(headersList)}${getRedirectUrlByRole(role)}`;
 
   await auth.api.sendVerificationEmail({
     headers: headersList,
@@ -97,7 +98,7 @@ export async function signUpAction(credentials: z.infer<typeof signUpSchema>) {
   if (!result.success) {
     return result.error;
   }
-  const { name, email, password } = result.data;
+  const { name, email, password, role } = result.data;
 
   await auth.api.signUpEmail({
     body: {
@@ -118,7 +119,8 @@ export async function signUpWithGoogleAction() {
   });
 
   if ("user" in res && res.user.emailVerified) {
-    redirect(OWNERS_DASHBOARD);
+    const role = res.user.role;
+    redirect(getRedirectUrlByRole(role));
   }
   redirect("/verify-email");
 }
@@ -142,7 +144,16 @@ export async function loginAction(credentials: unknown) {
       return { success: true, redirectTo: "/login/verify-totp" };
     }
 
-    return { success: true as const, redirectTo: OWNERS_DASHBOARD };
+    // Prefer role from sign-in response to avoid relying on a newly set cookie
+    const roleFromResponse =
+      "user" in response && response.user ? response.user.role : undefined;
+    const role =
+      roleFromResponse ??
+      (await auth.api.getSession({ headers: await headers() }))?.user?.role;
+
+    const redirectUrl = getRedirectUrlByRole(role);
+
+    return { success: true as const, redirectTo: redirectUrl };
   } catch (error: unknown) {
     if (isLoginError(error)) {
       if (error.body.code === "EMAIL_NOT_VERIFIED") {
@@ -191,7 +202,15 @@ export async function verifyTotpAction(payload: {
       headers: await headers(),
     });
 
-    return { success: true as const, redirectTo: OWNERS_DASHBOARD };
+    // Fetch session to get user role
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+
+    const role = session?.user?.role;
+    const redirectUrl = getRedirectUrlByRole(role);
+
+    return { success: true as const, redirectTo: redirectUrl };
   } catch (error: unknown) {
     if (isLoginError(error)) {
       return {
@@ -210,7 +229,7 @@ export async function verifyTotpAction(payload: {
 
 // this is when users forget their password
 export async function requestPasswordResetAction(
-  payload: z.infer<typeof forgotPasswordSchema>
+  payload: z.infer<typeof forgotPasswordSchema>,
 ) {
   const parsed = forgotPasswordSchema.safeParse(payload);
 
@@ -232,7 +251,7 @@ export async function requestPasswordResetAction(
 }
 
 export async function resetPasswordAction(
-  payload: z.infer<typeof resetPasswordSchema>
+  payload: z.infer<typeof resetPasswordSchema>,
 ) {
   const parsed = resetPasswordSchema.safeParse(payload);
 

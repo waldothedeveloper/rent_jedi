@@ -140,10 +140,10 @@ const Navbar = ({
     },
   ],
   auth = {
-    login: { title: "Property Owner Login", url: "/login?role=property_owner" },
+    login: { title: "Property Owner Login", url: "/login?role=owner" },
     signup: {
       title: "Property Owner Sign up",
-      url: "/signup?role=property_owner",
+      url: "/signup?role=owner",
     },
   },
   className,

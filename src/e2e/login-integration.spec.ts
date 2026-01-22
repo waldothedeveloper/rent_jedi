@@ -23,14 +23,14 @@ test.describe("Authentication Integration", () => {
   });
 
   test("complete login flow with valid credentials", async ({ page }) => {
-    // Note: Skipped - requires test user setup
+    // Note: Requires owner test user setup
     await page.goto("/login");
 
     const emailInput = page.getByLabel(/^email$/i);
     const passwordInput = page.getByLabel(/^password$/i);
 
-    await emailInput.fill(TEST_CREDENTIALS.valid.email);
-    await passwordInput.fill(TEST_CREDENTIALS.valid.password);
+    await emailInput.fill(TEST_CREDENTIALS.owner.email);
+    await passwordInput.fill(TEST_CREDENTIALS.owner.password);
 
     const submitButton = page.getByRole("button", {
       name: /login to bloom rent/i,
@@ -63,11 +63,11 @@ test.describe("Authentication Integration", () => {
   });
 
   test("session persists across page reloads", async ({ page }) => {
-    // Note: Skipped - requires test user setup
+    // Note: Requires owner test user setup
     await login(
       page,
-      TEST_CREDENTIALS.valid.email,
-      TEST_CREDENTIALS.valid.password
+      TEST_CREDENTIALS.owner.email,
+      TEST_CREDENTIALS.owner.password
     );
 
     // Wait for dashboard
