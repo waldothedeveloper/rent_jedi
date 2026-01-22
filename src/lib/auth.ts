@@ -21,11 +21,10 @@ import type { User } from "better-auth";
 import { betterAuth } from "better-auth";
 import { db } from "@/db/drizzle";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { eq } from "drizzle-orm";
+import { invite } from "@/db/schema/invites-schema";
 import { nextCookies } from "better-auth/next-js";
 import { property } from "@/db/schema/properties-schema";
-import { redirect } from "next/navigation";
-import { invite } from "@/db/schema/invites-schema";
-import { eq } from "drizzle-orm";
 
 type SendResetPasswordPayload = { user: User; url: string; token: string };
 type OnPasswordResetPayload = { user: User };
@@ -74,9 +73,6 @@ export const auth = betterAuth({
         }),
       }).catch((error) => {});
     },
-    async afterEmailVerification() {
-      redirect("/owners/dashboard");
-    },
   },
   emailAndPassword: {
     enabled: true,
@@ -94,7 +90,9 @@ export const auth = betterAuth({
           resetUrl: url,
           template: "reset",
         }),
-      }).catch((error) => {});
+      }).catch((error) => {
+        // TODO: Handle error appropriately, inform the user of the error
+      });
     },
     onPasswordReset: async ({ user }: OnPasswordResetPayload) => {
       await fetch(apiSendUrl, {
@@ -106,7 +104,9 @@ export const auth = betterAuth({
           firstName: user.name,
           template: "reset-confirmation",
         }),
-      }).catch((error) => {});
+      }).catch((error) => {
+        // TODO: Handle error appropriately, inform the user of the error
+      });
     },
   },
 
@@ -114,9 +114,17 @@ export const auth = betterAuth({
     user: {
       create: {
         before: async (user) => {
-          // Check if user email has a pending tenant invite
-          // If yes, assign 'tenant' role; otherwise, assign 'owner' role
-          // This runs for BOTH email/password and OAuth signups
+          // Priority order for role assignment:
+          // 1. Role provided during signup (from role selection)
+          // 2. Role from pending tenant invite
+          // 3. Default to owner
+
+          // Check if role was provided during signup
+          if (user.role && (user.role === "owner" || user.role === "tenant")) {
+            return { data: user };
+          }
+
+          // Check for pending tenant invite
           if (user.email) {
             const pendingInvite = await db
               .select()
@@ -139,7 +147,7 @@ export const auth = betterAuth({
             }
           }
 
-          // Default to 'owner' role for all other signups
+          // Default to owner
           return {
             data: {
               ...user,

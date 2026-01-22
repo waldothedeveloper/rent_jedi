@@ -22,6 +22,7 @@ export const inviteStatusEnum = pgEnum("invite_status", [
   "expired",
 ]);
 
+// TODO: WHY IS THE INVITE ROLE ENUM ALSO A MANAGER? IT SHOULD BE ONLY TENANT MOTHER FUCKER
 export const inviteRoleEnum = pgEnum("invite_role", ["tenant", "manager"]);
 
 export const invite = pgTable(
@@ -62,13 +63,13 @@ export const invite = pgTable(
     index("invite_status_idx").on(table.status),
     uniqueIndex("invite_property_email_uid").on(
       table.propertyId,
-      table.inviteeEmail
+      table.inviteeEmail,
     ),
     check(
       "invite_email_valid",
-      sql`${table.inviteeEmail} ~ ${sql.raw(`'${EMAILREGEX}'`)}`
+      sql`${table.inviteeEmail} ~ ${sql.raw(`'${EMAILREGEX}'`)}`,
     ),
-  ]
+  ],
 );
 
 export const inviteRelations = relations(invite, ({ one }) => ({

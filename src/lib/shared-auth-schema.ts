@@ -28,6 +28,7 @@ export const signUpSchema = z
     email: z.email("Please enter a valid email."),
     password: signUpPasswordSchema,
     confirmPassword: z.string(),
+    role: z.enum(["owner", "tenant"]).optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     path: ["confirmPassword"],

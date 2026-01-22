@@ -15,7 +15,12 @@ import {
   FieldLabel,
   FieldSeparator,
 } from "@/components/ui/field";
+import {
+  acceptTenantInviteWithLogin,
+  validateInviteToken,
+} from "@/app/actions/invites";
 import { revalidateLogic, useForm } from "@tanstack/react-form";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,11 +31,6 @@ import { loginAction } from "@/app/actions/auth";
 import { loginSchema } from "@/lib/shared-auth-schema";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
-import {
-  validateInviteToken,
-  acceptTenantInviteWithLogin,
-} from "@/app/actions/invites";
 
 interface LoginFormProps extends React.ComponentProps<"div"> {
   token?: string;
@@ -54,7 +54,9 @@ export function LoginForm({
   const description = isTenant
     ? "Use your existing Bloom Rent credentials to accept this invitation"
     : "The sun is up and the soil is waiting. Step back in to see what's growing.";
-  const submitButtonText = isTenant ? "Sign In & Accept" : "Login to Bloom Rent";
+  const submitButtonText = isTenant
+    ? "Sign In & Accept"
+    : "Login to Bloom Rent";
 
   const form = useForm({
     defaultValues: {
@@ -80,7 +82,7 @@ export function LoginForm({
 
       const redirectTo = token
         ? "/invite/welcome"
-        : (res as any).redirectTo ?? "/owners/dashboard";
+        : ((res as any).redirectTo ?? "/owners/dashboard");
       router.push(redirectTo);
       router.refresh();
       formApi.reset();
@@ -124,7 +126,7 @@ export function LoginForm({
                   onClick={async () => {
                     await authClient.signIn.social({
                       provider: "google",
-                      callbackURL: "/owners/dashboard",
+                      callbackURL: "/auth-success",
                     });
                   }}
                 >

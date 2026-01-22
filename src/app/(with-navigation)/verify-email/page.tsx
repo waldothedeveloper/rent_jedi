@@ -1,8 +1,24 @@
 import { EmailForm } from "./email-form";
 import Link from "next/link";
 import { SharedAuthHeader } from "@/components/shared-auth-header";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { getRedirectUrlByRole } from "@/lib/auth-utils";
 
 export default async function VerifyEmailPage() {
+  // Check if user has verified email (session exists with emailVerified)
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  // If verified, redirect to role-based dashboard
+  if (session?.user?.emailVerified) {
+    const role = session.user.role;
+    const redirectUrl = getRedirectUrlByRole(role);
+    redirect(redirectUrl);
+  }
+
   return (
     <div className="bg-muted flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
       <div className="flex w-full max-w-xl flex-col gap-12">
