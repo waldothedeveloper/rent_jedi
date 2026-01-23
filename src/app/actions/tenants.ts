@@ -5,9 +5,11 @@ import {
   createTenantDraftDAL,
   getTenantByIdDAL,
   listTenantsDAL,
+  updateTenantDAL,
   updateTenantDraftDAL,
 } from "@/dal/tenants";
 import {
+  editTenantSchema,
   leaseDatesSchema,
   tenantBasicInfoSchema,
   unitSelectionSchema,
@@ -160,6 +162,49 @@ export async function getTenantForEdit(tenantId: string) {
   return {
     success: true,
     tenant: result.data,
+  };
+}
+
+/**
+ * Update tenant (works for any status)
+ */
+export async function updateTenant(
+  tenantId: string,
+  input: z.infer<typeof editTenantSchema>
+) {
+  // Validate and transform input (including phone E.164 conversion)
+  const { success, data, error } = editTenantSchema.safeParse(input);
+
+  if (!success) {
+    return { success: false, errors: error, message: "Validation failed." };
+  }
+
+  const name = `${data.firstName} ${data.lastName}`.trim();
+
+  // Parse date string as UTC midnight
+  const parseAsUTC = (dateStr: string) => {
+    const [year, month, day] = dateStr.split("-").map(Number);
+    return new Date(Date.UTC(year, month - 1, day));
+  };
+
+  const result = await updateTenantDAL(tenantId, {
+    name,
+    email: data.email ?? null,
+    phone: data.phone ?? null,
+    leaseStartDate: data.leaseStartDate ? parseAsUTC(data.leaseStartDate) : undefined,
+    leaseEndDate: data.leaseEndDate ? parseAsUTC(data.leaseEndDate) : null,
+  });
+
+  if (!result.success) {
+    return { success: false, message: result.message };
+  }
+
+  revalidatePath("/owners/tenants");
+  revalidatePath("/owners/properties");
+
+  return {
+    success: true,
+    message: "Tenant updated successfully!",
   };
 }
 

@@ -184,3 +184,55 @@ export const createPendingInviteSchema = z.object({
 export const invitationChoiceSchema = z.object({
   invitationChoice: z.enum(["now", "later"]),
 });
+
+export const editTenantSchema = z
+  .object({
+    firstName: requiredString().min(1, "First name is required."),
+    lastName: requiredString().min(1, "Last name is required."),
+    email: z
+      .string()
+      .trim()
+      .transform((val) => val || undefined)
+      .pipe(z.union([z.undefined(), z.email("Enter a valid email.")])),
+    phone: phoneField(),
+    leaseStartDate: z
+      .string()
+      .trim()
+      .transform((val) => val || undefined)
+      .pipe(
+        z.union([
+          z.undefined(),
+          z
+            .string()
+            .refine((val) => !isNaN(Date.parse(val)), "Invalid date format."),
+        ])
+      ),
+    leaseEndDate: z
+      .string()
+      .trim()
+      .transform((val) => val || undefined)
+      .pipe(
+        z.union([
+          z.undefined(),
+          z
+            .string()
+            .refine((val) => !isNaN(Date.parse(val)), "Invalid date format."),
+        ])
+      ),
+  })
+  .refine((data) => data.email !== undefined || data.phone !== undefined, {
+    message: "Either email or phone is required.",
+    path: ["email"],
+  })
+  .refine(
+    (data) => {
+      if (!data.leaseEndDate || !data.leaseStartDate) return true;
+      const start = new Date(data.leaseStartDate);
+      const end = new Date(data.leaseEndDate);
+      return end > start;
+    },
+    {
+      message: "Lease end date must be after start date.",
+      path: ["leaseEndDate"],
+    }
+  );
