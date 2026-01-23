@@ -17,10 +17,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm run dev                    # Start development server with Turbopack
 
 # Database (Drizzle ORM)
-npm run db:generate            # Generate migrations from schema changes
-npm run db:migrate             # Run pending migrations
 npm run db:push                # Push schema directly to DB (dev only)
-npm run db:studio              # Open Drizzle Studio GUI
+
 
 # Authentication
 npm run auth:generate          # Generate Better Auth schema
@@ -74,19 +72,20 @@ Every Next.js App Router route should include:
 
 ```typescript
 // ✅ CORRECT - Use CSS variable classes
-bg-background       // Instead of bg-gray-50, bg-white
-bg-card             // Instead of bg-white for cards
-text-foreground     // Instead of text-gray-900, text-black
-text-card-foreground // Instead of text-gray-700, text-gray-900 on cards
-text-muted-foreground // Instead of text-gray-600, text-gray-500
-text-primary        // Instead of text-blue-600 for links/primary actions
-border-border       // Instead of border-gray-200, border-gray-300
+bg - background; // Instead of bg-gray-50, bg-white
+bg - card; // Instead of bg-white for cards
+text - foreground; // Instead of text-gray-900, text-black
+text - card - foreground; // Instead of text-gray-700, text-gray-900 on cards
+text - muted - foreground; // Instead of text-gray-600, text-gray-500
+text - primary; // Instead of text-blue-600 for links/primary actions
+border - border; // Instead of border-gray-200, border-gray-300
 
 // ❌ WRONG - Hardcoded Tailwind colors
-bg-gray-50, bg-white, text-gray-900, text-blue-600
+(bg - gray - 50, bg - white, text - gray - 900, text - blue - 600);
 ```
 
 **Why CSS Variables:**
+
 - Ensures consistent theming across light/dark modes
 - Single source of truth defined in `globals.css`
 - Automatic support for future theme customization
