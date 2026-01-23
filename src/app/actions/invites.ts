@@ -9,7 +9,6 @@ import {
   updateInviteStatusDAL,
 } from "@/dal/invites";
 import { getPropertyByIdDAL, verifySessionDAL } from "@/dal/properties";
-
 import {
   tenantInviteLoginSchema,
   tenantInviteSignupSchema,
@@ -17,6 +16,7 @@ import {
 
 import { auth } from "@/lib/auth";
 import { getTenantByIdDAL } from "@/dal/tenants";
+import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -30,6 +30,41 @@ const createPendingInviteSchema = z.object({
   tenantId: z.uuid(),
   propertyId: z.uuid(),
 });
+
+type HeadersLike = Pick<Headers, "get"> | null | undefined;
+
+function getBaseUrl(headersList?: HeadersLike) {
+  const envUrl =
+    process.env.NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL ||
+    process.env.NEXT_PUBLIC_VERCEL_URL;
+  const origin = headersList?.get("origin");
+  const host = headersList?.get("host");
+  const rawBase = envUrl ?? origin ?? (host ? `http://${host}` : undefined);
+  const withProtocol = rawBase?.startsWith("http")
+    ? rawBase
+    : rawBase
+      ? `https://${rawBase}`
+      : "http://localhost:3000";
+
+  return withProtocol.replace(/\/$/, "");
+}
+
+async function parseEmailError(response: Response) {
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    try {
+      return await response.json();
+    } catch {
+      return null;
+    }
+  }
+
+  try {
+    return await response.text();
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Send tenant invitation email
@@ -105,10 +140,7 @@ export async function sendTenantInvitation(
   const inviteData = inviteResult.data;
 
   // Build invite URL
-  const baseUrl =
-    process.env.NODE_ENV === "development"
-      ? "http://localhost:3000"
-      : `https://${process.env.VERCEL_URL}`;
+  const baseUrl = getBaseUrl(await headers());
 
   const inviteUrl = `${baseUrl}/invite/accept?token=${inviteData.token}`;
 
@@ -142,8 +174,15 @@ export async function sendTenantInvitation(
     });
 
     if (!emailResponse.ok) {
-      const errorData = await emailResponse.json();
-      console.error("Failed to send invitation email:", errorData);
+      const errorData = await parseEmailError(emailResponse);
+      const bodyPreview =
+        typeof errorData === "string" ? errorData.slice(0, 500) : errorData;
+      console.error("Failed to send invitation email:", {
+        status: emailResponse.status,
+        statusText: emailResponse.statusText,
+        contentType: emailResponse.headers.get("content-type"),
+        body: bodyPreview,
+      });
       return {
         success: false,
         message:
@@ -351,8 +390,7 @@ export async function acceptTenantInviteWithSignup(
 
   // Verify email matches invite (case-insensitive)
   if (
-    data.email.toLowerCase().trim() !==
-    invite.inviteeEmail.toLowerCase().trim()
+    data.email.toLowerCase().trim() !== invite.inviteeEmail.toLowerCase().trim()
   ) {
     return {
       success: false,
@@ -408,10 +446,7 @@ export async function acceptTenantInviteWithSignup(
     await updateInviteStatusDAL(invite.id, "accepted");
 
     // Send confirmation emails (tenant + landlord)
-    const baseUrl =
-      process.env.NODE_ENV === "development"
-        ? "http://localhost:3000"
-        : `https://${process.env.VERCEL_URL}`;
+    const baseUrl = getBaseUrl(await headers());
 
     // Send emails in parallel (non-blocking)
     Promise.all([
@@ -540,7 +575,7 @@ export async function acceptTenantInviteWithLogin(
       return {
         success: false,
         message: `Email mismatch. This invitation was sent to ${invite.inviteeEmail}, but you're trying to sign in with ${user.email}. Please use the correct email or contact
-  your landlord.`
+  your landlord.`,
       };
     }
 
@@ -555,10 +590,7 @@ export async function acceptTenantInviteWithLogin(
     await updateInviteStatusDAL(invite.id, "accepted");
 
     // Send confirmation emails (tenant + landlord)
-    const baseUrl =
-      process.env.NODE_ENV === "development"
-        ? "http://localhost:3000"
-        : `https://${process.env.VERCEL_URL}`;
+    const baseUrl = getBaseUrl(await headers());
 
     Promise.all([
       // Email to tenant
