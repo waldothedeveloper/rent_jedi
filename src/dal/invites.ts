@@ -1,6 +1,6 @@
 "server only";
 
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 
 import type { Roles } from "@/types/roles";
 import { auth } from "@/lib/auth";
@@ -63,6 +63,8 @@ const ERRORS = {
     "You do not have permission to update this invitation.",
   FAILED_TO_CREATE: "Failed to create invitation.",
   FAILED_TO_UPDATE: "Failed to update invitation.",
+  INVITE_ALREADY_ACCEPTED:
+    "This tenant has already accepted an invitation for this property.",
   INVITE_EXPIRED:
     "This invitation has expired. Please contact your landlord for a new invitation.",
   INVITE_NOT_FOUND_OR_EXPIRED: "Invitation not found or has expired.",
@@ -174,8 +176,16 @@ export const createInviteDAL = async (data: {
     return { success: false, message: ERRORS.NO_CREATE_PERMISSION };
   }
 
+  const inviteeEmail = data.inviteeEmail.trim();
+  const normalizedInviteeEmail = inviteeEmail.toLowerCase();
+
   // Run all three independent queries in parallel
-  const [propertyRows, tenantRows, existingInviteRows] = await Promise.all([
+  const [
+    propertyRows,
+    tenantRows,
+    existingInviteRows,
+    existingPropertyInviteRows,
+  ] = await Promise.all([
     db.select().from(property).where(eq(property.id, data.propertyId)).limit(1),
     db.select().from(tenant).where(eq(tenant.id, data.tenantId)).limit(1),
     db
@@ -185,11 +195,23 @@ export const createInviteDAL = async (data: {
         and(eq(invite.tenantId, data.tenantId), eq(invite.status, "pending")),
       )
       .limit(1),
+    db
+      .select()
+      .from(invite)
+      .where(
+        and(
+          eq(invite.propertyId, data.propertyId),
+          sql`lower(${invite.inviteeEmail}) = ${normalizedInviteeEmail}`,
+        ),
+      )
+      .orderBy(desc(invite.createdAt))
+      .limit(1),
   ]);
 
   const propertyRecord = propertyRows[0];
   const tenantRecord = tenantRows[0];
   const existingInvite = existingInviteRows[0];
+  const existingPropertyInvite = existingPropertyInviteRows[0];
 
   // Verify property ownership
   if (!propertyRecord) {
@@ -215,7 +237,7 @@ export const createInviteDAL = async (data: {
   expiresAt.setDate(expiresAt.getDate() + 14);
 
   // Revoke existing invite if present
-  if (existingInvite) {
+  if (existingInvite && existingInvite.id !== existingPropertyInvite?.id) {
     await db
       .update(invite)
       .set({
@@ -225,6 +247,36 @@ export const createInviteDAL = async (data: {
       .where(eq(invite.id, existingInvite.id));
   }
 
+  if (existingPropertyInvite) {
+    if (existingPropertyInvite.status === "accepted") {
+      return { success: false, message: ERRORS.INVITE_ALREADY_ACCEPTED };
+    }
+
+    const updatedInvite = await db
+      .update(invite)
+      .set({
+        ownerId: session.user.id,
+        tenantId: data.tenantId,
+        inviteeEmail: normalizedInviteeEmail,
+        inviteeName: data.inviteeName,
+        role: "tenant",
+        status: "pending",
+        token,
+        expiresAt,
+        revokedAt: null,
+        acceptedAt: null,
+      })
+      .where(eq(invite.id, existingPropertyInvite.id))
+      .returning()
+      .then((rows) => rows[0]);
+
+    if (!updatedInvite) {
+      return { success: false, message: ERRORS.FAILED_TO_UPDATE };
+    }
+
+    return { success: true, data: updatedInvite };
+  }
+
   // Create new invite
   const newInvite = await db
     .insert(invite)
@@ -232,7 +284,7 @@ export const createInviteDAL = async (data: {
       propertyId: data.propertyId,
       ownerId: session.user.id,
       tenantId: data.tenantId,
-      inviteeEmail: data.inviteeEmail,
+      inviteeEmail: normalizedInviteeEmail,
       inviteeName: data.inviteeName,
       role: "tenant",
       status: "pending",
