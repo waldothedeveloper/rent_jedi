@@ -11,6 +11,26 @@ test.describe("Authentication Integration", () => {
     await clearAuth(page);
   });
 
+  test("Forgot Password should not send reset instructions for non-existent email", async ({
+    page,
+  }) => {
+    await page.goto("/forgot-password");
+
+    const emailInput = page.getByLabel(/^email$/i);
+    await emailInput.fill("non-existent-email@test.com");
+
+    const submitButton = page.getByRole("button", {
+      name: /send reset link/i,
+    });
+    await submitButton.click();
+
+    const toast = page.locator("li[data-sonner-toast]");
+    await expect(toast).toBeVisible();
+    await expect(toast).toHaveText(
+      "If this email exists in our system, check your email for the reset link",
+    );
+  });
+
   test("accessing protected route redirects to login when not authenticated", async ({
     page,
   }) => {
@@ -41,6 +61,24 @@ test.describe("Authentication Integration", () => {
     await expect(page).toHaveURL(/\/owners\/dashboard/, { timeout: 10000 });
   });
 
+  test("session persists across page reloads", async ({ page }) => {
+    // Note: Requires owner test user setup
+    await login(
+      page,
+      TEST_CREDENTIALS.owner.email,
+      TEST_CREDENTIALS.owner.password,
+    );
+
+    // Wait for dashboard
+    await expect(page).toHaveURL(/\/owners\/dashboard/, { timeout: 10000 });
+
+    // Reload page
+    await page.reload();
+
+    // Should still be on dashboard (session persisted)
+    await expect(page).toHaveURL(/\/owners\/dashboard/);
+  });
+
   test.skip("login with 2FA redirects to TOTP verification", async ({
     page,
   }) => {
@@ -60,23 +98,5 @@ test.describe("Authentication Integration", () => {
 
     // Should redirect to TOTP verification
     await expect(page).toHaveURL(/\/login\/verify-totp/, { timeout: 5000 });
-  });
-
-  test("session persists across page reloads", async ({ page }) => {
-    // Note: Requires owner test user setup
-    await login(
-      page,
-      TEST_CREDENTIALS.owner.email,
-      TEST_CREDENTIALS.owner.password
-    );
-
-    // Wait for dashboard
-    await expect(page).toHaveURL(/\/owners\/dashboard/, { timeout: 10000 });
-
-    // Reload page
-    await page.reload();
-
-    // Should still be on dashboard (session persisted)
-    await expect(page).toHaveURL(/\/owners\/dashboard/);
   });
 });

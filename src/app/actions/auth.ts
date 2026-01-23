@@ -219,7 +219,6 @@ export async function verifyTotpAction(payload: {
       };
     }
 
-    // ("verifyTotpAction failed", error);
     return {
       success: false as const,
       message: "Unable to verify code. Please try again.",
@@ -227,27 +226,48 @@ export async function verifyTotpAction(payload: {
   }
 }
 
-// this is when users forget their password
 export async function requestPasswordResetAction(
   payload: z.infer<typeof forgotPasswordSchema>,
 ) {
   const parsed = forgotPasswordSchema.safeParse(payload);
 
   if (!parsed.success) {
-    return parsed.error;
+    return {
+      success: false as const,
+      message: parsed.error.message ?? "Please enter a valid email address.",
+    };
   }
 
   const headersList = await headers();
   const redirectTo = `${getBaseUrl(headersList)}/reset-password`;
 
-  await auth.api.requestPasswordReset({
-    body: {
-      email: parsed.data.email,
-      redirectTo,
-    },
-  });
+  try {
+    const response = await auth.api.requestPasswordReset({
+      body: {
+        email: parsed.data.email,
+        redirectTo,
+      },
+    });
 
-  return { success: true } as const;
+    return {
+      success: true as const,
+      message: response?.message ?? "Check your email for reset instructions.",
+    };
+  } catch (error: unknown) {
+    if (isLoginError(error)) {
+      return {
+        success: false as const,
+        message:
+          error?.body?.message ??
+          "Unable to send reset link. Please try again.",
+      };
+    }
+
+    return {
+      success: false as const,
+      message: "Something went wrong. Please try again.",
+    };
+  }
 }
 
 export async function resetPasswordAction(
