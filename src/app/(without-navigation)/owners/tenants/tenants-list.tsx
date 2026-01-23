@@ -1,23 +1,33 @@
 "use client";
 
 import { ChevronLeft, ChevronRight, User } from "lucide-react";
-import { formatCurrency, formatDate } from "@/utils/form-helpers";
+import {
+  formatCurrency,
+  formatDate,
+  formatPhoneFromE164,
+} from "@/utils/form-helpers";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { TenantWithDetails } from "@/dal/tenants";
 import { TenantsHeader } from "./tenants-header";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 interface TenantsListProps {
   tenants: TenantWithDetails[];
 }
 
 export function TenantsList({ tenants }: TenantsListProps) {
-  const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const selectedTenantId = searchParams.get("tenantId");
 
   const selectedTenant = tenants.find((t) => t.id === selectedTenantId);
+
+  const handleTenantSelect = (tenantId: string) => {
+    router.push(`/owners/tenants?tenantId=${tenantId}`, { scroll: false });
+  };
 
   return (
     <div className="flex h-full flex-col gap-6">
@@ -29,7 +39,7 @@ export function TenantsList({ tenants }: TenantsListProps) {
               type="button"
               variant="ghost"
               className="gap-2"
-              onClick={() => setSelectedTenantId(null)}
+              onClick={() => router.push("/owners/tenants", { scroll: false })}
             >
               <ChevronLeft aria-hidden="true" className="size-4" />
               Back to Tenants
@@ -60,7 +70,7 @@ export function TenantsList({ tenants }: TenantsListProps) {
                   aria-current={
                     selectedTenantId === tenant.id ? "true" : undefined
                   }
-                  onClick={() => setSelectedTenantId(tenant.id)}
+                  onClick={() => handleTenantSelect(tenant.id)}
                 >
                   <div className="flex min-w-0 gap-x-4">
                     <div className="flex size-12 flex-none items-center justify-center rounded-full bg-muted dark:outline dark:-outline-offset-1 dark:outline-border/50">
@@ -171,7 +181,9 @@ export function TenantsList({ tenants }: TenantsListProps) {
                           Phone
                         </dt>
                         <dd className="mt-1 text-sm text-foreground">
-                          {selectedTenant.phone ?? "—"}
+                          {selectedTenant.phone
+                            ? formatPhoneFromE164(selectedTenant.phone)
+                            : "—"}
                         </dd>
                       </div>
                     </dl>

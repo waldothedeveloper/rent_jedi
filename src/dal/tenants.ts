@@ -547,6 +547,87 @@ export const getTenantByIdDAL = cache(
 );
 
 /**
+ * Update tenant (works for any status)
+ * Allows owner to update tenant information regardless of status
+ */
+export const updateTenantDAL = async (
+  tenantId: string,
+  data: TenantUpdate
+): Promise<{
+  success: boolean;
+  data?: typeof tenant.$inferSelect;
+  message?: string;
+}> => {
+  const session = await verifySessionDAL();
+
+  if (!session) {
+    return {
+      success: false,
+      message: ERRORS.NOT_SIGNED_IN,
+    };
+  }
+
+  try {
+    // Run permission check and tenant existence check in parallel
+    const [hasPermission, existingTenant] = await Promise.all([
+      canUpdateTenant(session.user.id, session.user.role as Roles),
+      db
+        .select()
+        .from(tenant)
+        .where(eq(tenant.id, tenantId))
+        .limit(1)
+        .then((rows) => rows[0]),
+    ]);
+
+    if (!hasPermission) {
+      return {
+        success: false as const,
+        message: ERRORS.NO_UPDATE_PERMISSION,
+      };
+    }
+
+    if (!existingTenant) {
+      return { success: false, message: ERRORS.TENANT_NOT_FOUND };
+    }
+
+    if (existingTenant.ownerId !== session.user.id) {
+      return {
+        success: false,
+        message: ERRORS.NOT_TENANT_OWNER,
+      };
+    }
+
+    // Validate email or phone requirement
+    const updatedEmail = data.email !== undefined ? data.email : existingTenant.email;
+    const updatedPhone = data.phone !== undefined ? data.phone : existingTenant.phone;
+
+    if (!updatedEmail && !updatedPhone) {
+      return {
+        success: false,
+        message: ERRORS.EMAIL_OR_PHONE_REQUIRED,
+      };
+    }
+
+    const [updatedTenant] = await db
+      .update(tenant)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .where(eq(tenant.id, tenantId))
+      .returning();
+
+    return { success: true, data: updatedTenant };
+  } catch (error) {
+    console.error("[updateTenantDAL] Error:", error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : ERRORS.FAILED_TO_UPDATE,
+    };
+  }
+};
+
+/**
  * List all tenants for the current owner
  * Includes drafts, active, archived, and inactive tenants
  * Returns tenant with associated unit and property information

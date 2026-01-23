@@ -78,7 +78,7 @@ export function TenantsHeader({ selectedTenant }: TenantsHeaderProps) {
               <>
                 <DropdownMenuItem asChild>
                   <Link
-                    href="/owners/tenants/add-tenant"
+                    href={`/owners/tenants/edit-tenant?tenantId=${selectedTenant.id}`}
                     className="flex items-center gap-1.5 cursor-pointer"
                   >
                     <Pen className="size-4" />
@@ -112,7 +112,7 @@ export function TenantsHeader({ selectedTenant }: TenantsHeaderProps) {
               <Button variant="ghost" asChild>
                 <Link
                   className="flex items-center gap-1.5"
-                  href="/owners/tenants/add-tenant"
+                  href={`/owners/tenants/edit-tenant?tenantId=${selectedTenant.id}`}
                 >
                   <Pen aria-hidden="true" className="size-4" />
                   <span>Edit Tenant</span>
