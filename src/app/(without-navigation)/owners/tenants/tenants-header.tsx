@@ -1,6 +1,6 @@
 "use client";
 
-import { Mail, Pen, Plus, Settings, Trash2 } from "lucide-react";
+import { Archive, Mail, Pen, Plus, Settings } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -9,11 +9,22 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import Link from "next/link";
 import type { TenantWithDetails } from "@/dal/tenants";
 import { sendTenantInvitation } from "@/app/actions/invites";
+import { archiveTenant } from "@/app/actions/tenants";
 import { toast } from "sonner";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface TenantsHeaderProps {
   selectedTenant: TenantWithDetails | null;
@@ -21,6 +32,9 @@ interface TenantsHeaderProps {
 
 export function TenantsHeader({ selectedTenant }: TenantsHeaderProps) {
   const [isResending, setIsResending] = useState(false);
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
+  const router = useRouter();
 
   const handleResendInvitation = async () => {
     if (!selectedTenant?.unitId || !selectedTenant?.property?.id) {
@@ -48,6 +62,45 @@ export function TenantsHeader({ selectedTenant }: TenantsHeaderProps) {
       toast.error("Failed to send invitation");
     } finally {
       setIsResending(false);
+    }
+  };
+
+  const handleArchiveClick = () => {
+    if (!selectedTenant) return;
+
+    // Check if tenant is already archived
+    if (selectedTenant.tenantStatus === "archived") {
+      toast.error("Tenant is already archived");
+      return;
+    }
+
+    // Open confirmation dialog
+    setArchiveDialogOpen(true);
+  };
+
+  const handleArchive = async () => {
+    if (!selectedTenant) return;
+
+    setIsArchiving(true);
+
+    try {
+      const result = await archiveTenant(selectedTenant.id);
+
+      if (!result.success) {
+        toast.error(result.message || "Failed to archive tenant");
+        setArchiveDialogOpen(false);
+        return;
+      }
+
+      toast.success("Tenant archived successfully");
+      setArchiveDialogOpen(false);
+
+      // Redirect to tenants list after successful archive
+      router.push("/owners/tenants");
+    } catch (error) {
+      toast.error("An unexpected error occurred");
+    } finally {
+      setIsArchiving(false);
     }
   };
 
@@ -92,9 +145,14 @@ export function TenantsHeader({ selectedTenant }: TenantsHeaderProps) {
                   <Mail className="size-4" />
                   {isResending ? "Sending..." : "Re-send Invitation"}
                 </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Trash2 className="size-4" />
-                  Delete Tenant
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    handleArchiveClick();
+                  }}
+                >
+                  <Archive className="size-4" />
+                  Archive Tenant
                 </DropdownMenuItem>
               </>
             )}
@@ -127,14 +185,47 @@ export function TenantsHeader({ selectedTenant }: TenantsHeaderProps) {
                 <Mail aria-hidden="true" className="size-4" />
                 <span>{isResending ? "Sending..." : "Re-send Invitation"}</span>
               </Button>
-              <Button variant="ghost" className="flex items-center">
-                <Trash2 aria-hidden="true" className="size-4" />
-                <span>Delete Tenant</span>
+              <Button
+                variant="ghost"
+                className="flex items-center"
+                onClick={handleArchiveClick}
+              >
+                <Archive aria-hidden="true" className="size-4" />
+                <span>Archive Tenant</span>
               </Button>
             </>
           )}
         </div>
       </div>
+
+      <AlertDialog open={archiveDialogOpen} onOpenChange={setArchiveDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Archive Tenant?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will archive{" "}
+              <strong>{selectedTenant?.name || "this tenant"}</strong> and end their
+              lease.
+              <span className="block mt-2">
+                All payment history, maintenance requests, and invitations will be
+                preserved for audit purposes.
+              </span>
+              {selectedTenant?.tenantStatus === "active" && (
+                <span className="block mt-2 text-muted-foreground">
+                  The lease end date will be set to today, and the tenant status will
+                  change to "archived".
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isArchiving}>Cancel</AlertDialogCancel>
+            <Button onClick={handleArchive} disabled={isArchiving}>
+              {isArchiving ? "Archiving..." : "Yes, archive tenant"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

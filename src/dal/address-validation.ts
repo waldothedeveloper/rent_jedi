@@ -77,10 +77,12 @@ export const validateAddressWithGoogleDAL = cache(
             referer:
               process.env.NODE_ENV === "development"
                 ? "http://localhost:3000"
-                : process.env.VERCEL_PROJECT_PRODUCTION_URL!,
+                : (process.env.VERCEL_PROJECT_PRODUCTION_URL ??
+                  // Fallback for local testing when we use npm run build && npm run start
+                  "http://localhost:3000"),
           },
           body: JSON.stringify(requestBody),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -190,7 +192,7 @@ export const validateAddressWithGoogleDAL = cache(
         code: "NETWORK_ERROR",
       };
     }
-  }
+  },
 );
 
 /**
@@ -202,13 +204,13 @@ function hasConfirmedSubpremise(
   addressComponents?: Array<{
     componentType: string;
     confirmationLevel: string;
-  }>
+  }>,
 ): boolean {
   if (!addressComponents) return false;
 
   return addressComponents.some(
     (component) =>
       component.componentType === "subpremise" &&
-      component.confirmationLevel === "CONFIRMED"
+      component.confirmationLevel === "CONFIRMED",
   );
 }

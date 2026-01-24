@@ -215,3 +215,36 @@ export async function listTenants() {
   const result = await listTenantsDAL();
   return result;
 }
+
+/**
+ * Archive tenant
+ * Sets tenant status to 'archived' and ends lease
+ * Preserves all associated data (payments, maintenance requests, invites)
+ */
+export async function archiveTenant(
+  tenantId: string
+): Promise<{
+  success: boolean;
+  message?: string;
+}> {
+  const { archiveTenantDAL } = await import("@/dal/tenants");
+
+  const result = await archiveTenantDAL(tenantId);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message || "Failed to archive tenant",
+    };
+  }
+
+  // Revalidate paths to update UI
+  revalidatePath("/owners/tenants");
+  revalidatePath("/owners/properties");
+  revalidatePath("/owners/dashboard");
+
+  return {
+    success: true,
+    message: "Tenant archived successfully",
+  };
+}

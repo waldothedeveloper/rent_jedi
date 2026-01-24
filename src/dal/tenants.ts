@@ -39,6 +39,8 @@ const ERRORS = {
     "⛔️ Access Denied. You do not have permission to list tenants.",
   NO_ACTIVATE_PERMISSION:
     "⛔️ Access Denied. You do not have permission to activate a tenant.",
+  NO_ARCHIVE_PERMISSION:
+    "⛔️ Access Denied. You do not have permission to archive a tenant.",
   TENANT_NOT_FOUND: "Tenant not found.",
   NOT_TENANT_OWNER:
     "⛔️ Access Denied. You do not have permission to access this tenant.",
@@ -52,6 +54,7 @@ const ERRORS = {
   FAILED_TO_ACTIVATE: "Failed to activate tenant.",
   FAILED_TO_FETCH: "Failed to fetch tenant.",
   FAILED_TO_LIST: "Failed to fetch tenants.",
+  FAILED_TO_ARCHIVE: "Failed to archive tenant.",
 } as const;
 
 /*
@@ -695,3 +698,116 @@ export const listTenantsDAL = cache(
     }
   }
 );
+
+/**
+ * Archive tenant
+ * Sets tenant status to 'archived' and ends lease
+ * Preserves all associated data (payments, maintenance requests, invites)
+ */
+export const archiveTenantDAL = async (
+  tenantId: string
+): Promise<{
+  success: boolean;
+  message?: string;
+}> => {
+  const session = await verifySessionDAL();
+
+  if (!session) {
+    return {
+      success: false,
+      message: ERRORS.NOT_SIGNED_IN,
+    };
+  }
+
+  try {
+    // Run permission check and tenant fetch in parallel
+    const [hasPermission, existingTenant] = await Promise.all([
+      canDeleteTenant(session.user.id, session.user.role as Roles),
+      db
+        .select()
+        .from(tenant)
+        .where(eq(tenant.id, tenantId))
+        .limit(1)
+        .then((rows) => rows[0]),
+    ]);
+
+    // Permission check (reusing canDeleteTenant for archive permission)
+    if (!hasPermission) {
+      return {
+        success: false,
+        message: ERRORS.NO_ARCHIVE_PERMISSION,
+      };
+    }
+
+    // Existence check
+    if (!existingTenant) {
+      return {
+        success: false,
+        message: ERRORS.TENANT_NOT_FOUND,
+      };
+    }
+
+    // Ownership verification
+    if (existingTenant.ownerId !== session.user.id) {
+      return {
+        success: false,
+        message: ERRORS.NOT_TENANT_OWNER,
+      };
+    }
+
+    // Check if already archived
+    if (existingTenant.tenantStatus === "archived") {
+      return {
+        success: false,
+        message: "Tenant is already archived",
+      };
+    }
+
+    // Archive the tenant
+    const today = new Date();
+    const todayUTC = new Date(
+      Date.UTC(
+        today.getUTCFullYear(),
+        today.getUTCMonth(),
+        today.getUTCDate()
+      )
+    );
+    const updateData: {
+      tenantStatus: "archived";
+      leaseEndDate?: Date;
+      updatedAt: Date;
+    } = {
+      tenantStatus: "archived",
+      updatedAt: today,
+    };
+
+    // Set lease end date if not already set
+    if (!existingTenant.leaseEndDate) {
+      // If lease hasn't started yet (start date is in the future or today),
+      // set end date to 1 day after start to satisfy the constraint (end > start)
+      if (existingTenant.leaseStartDate && existingTenant.leaseStartDate >= todayUTC) {
+        const oneDayAfterStart = new Date(existingTenant.leaseStartDate);
+        oneDayAfterStart.setUTCDate(oneDayAfterStart.getUTCDate() + 1);
+        updateData.leaseEndDate = oneDayAfterStart;
+      } else {
+        // Lease already started in the past, so today > start (satisfies constraint)
+        updateData.leaseEndDate = todayUTC;
+      }
+    }
+
+    await db
+      .update(tenant)
+      .set(updateData)
+      .where(eq(tenant.id, tenantId));
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error("[archiveTenantDAL] Error:", error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : ERRORS.FAILED_TO_ARCHIVE,
+    };
+  }
+};
