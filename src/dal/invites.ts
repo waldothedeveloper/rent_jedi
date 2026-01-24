@@ -234,7 +234,7 @@ export const createInviteDAL = async (data: {
   // Generate secure token and expiration date (14 days)
   const token = crypto.randomUUID();
   const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + 14);
+  expiresAt.setUTCDate(expiresAt.getUTCDate() + 14);
 
   // Revoke existing invite if present
   if (existingInvite && existingInvite.id !== existingPropertyInvite?.id) {
