@@ -126,6 +126,98 @@ User (Owner)
 4. Show feedback with Sonner toast notifications
 5. Use DAL (Data Access Layer) functions in `/src/dal/` for DB operations
 
+### Security: Data Access Layer (DAL) & Data Transfer Objects (DTOs)
+
+**CRITICAL:** All data access must follow these security principles from Next.js best practices.
+
+#### The Three DAL Rules
+
+1. **Server-Only Execution**
+   - Every DAL file MUST start with `"server only";`
+   - This prevents accidental client-side imports (build will fail)
+   - Only Server Actions and API routes can call DAL functions
+
+2. **Authorization Before Data**
+   - Every DAL function MUST verify the user's session
+   - Check permissions BEFORE querying the database
+   - Never trust URL parameters or client-provided IDs alone
+
+3. **Return DTOs, Not Raw Data**
+   - Return only the fields the current user is authorized to see
+   - Never return full database rows to Server Actions
+   - Create explicit return types that exclude sensitive fields
+
+#### DTO Pattern Example
+
+```typescript
+// ❌ WRONG - Returns everything from database
+export async function getUserDAL(id: string) {
+  const user = await db.select().from(users).where(eq(users.id, id));
+  return user; // Exposes passwordHash, internalNotes, etc.
+}
+
+// ✅ CORRECT - Returns only authorized fields as DTO
+type UserDTO = {
+  id: string;
+  name: string;
+  email: string | null; // null if viewer can't see it
+};
+
+export async function getUserDAL(id: string): Promise<UserDTO | null> {
+  const session = await verifySessionDAL();
+  if (!session) return null;
+
+  const [user] = await db.select().from(users).where(eq(users.id, id));
+  if (!user) return null;
+
+  // Authorization: can this viewer see this user's email?
+  const canSeeEmail = session.user.id === id || session.user.role === "admin";
+
+  return {
+    id: user.id,
+    name: user.name,
+    email: canSeeEmail ? user.email : null,
+  };
+}
+```
+
+#### Server Action → DAL → DTO Flow
+
+```
+Client Request
+     ↓
+Server Action (validates input, calls DAL)
+     ↓
+DAL Function (authorizes, queries DB, builds DTO)
+     ↓
+DTO (minimal safe data returned to action)
+     ↓
+Server Action (may further filter before returning to client)
+```
+
+#### Security Audit Checklist
+
+When reviewing DAL code, verify:
+
+- [ ] File starts with `"server only";`
+- [ ] Session is verified before any database query
+- [ ] Permissions are checked for the specific resource
+- [ ] Return type is an explicit DTO (not `typeof table.$inferSelect`)
+- [ ] Sensitive fields are conditionally included based on authorization
+- [ ] No raw database objects are passed to client components
+
+#### Client Component Props
+
+**Never pass broad objects to client components:**
+
+```typescript
+// ❌ WRONG - Exposes all user fields
+<ProfileCard user={user} />
+
+// ✅ CORRECT - Only pass needed fields
+<ProfileCard name={user.name} avatarUrl={user.avatarUrl} />
+```
+
 ### Zod v4 API Guidelines
 
 **IMPORTANT:** This project uses Zod v4. Always use the v4 API, never older patterns.

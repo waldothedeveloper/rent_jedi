@@ -1,14 +1,5 @@
 "use client";
 
-import { Archive, Mail, Pen, Plus, Settings } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -18,27 +9,49 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Archive, Ban, Mail, Pen, Plus, Settings } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import type { TenantWithDetails } from "@/dal/tenants";
-import { sendTenantInvitation } from "@/app/actions/invites";
 import { archiveTenant } from "@/app/actions/tenants";
+import { revokeInvitation, sendTenantInvitation } from "@/app/actions/invites";
 import { toast } from "sonner";
-import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 interface TenantsHeaderProps {
   selectedTenant: TenantWithDetails | null;
+  inviteStatus?: string;
+  inviteId?: string;
 }
 
-export function TenantsHeader({ selectedTenant }: TenantsHeaderProps) {
+export function TenantsHeader({
+  selectedTenant,
+  inviteStatus,
+  inviteId,
+}: TenantsHeaderProps) {
   const [isResending, setIsResending] = useState(false);
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
+  const [revokeDialogOpen, setRevokeDialogOpen] = useState(false);
+  const [isRevoking, setIsRevoking] = useState(false);
   const router = useRouter();
+
+  const canRevoke =
+    selectedTenant?.email && inviteStatus === "pending" && inviteId;
 
   const handleResendInvitation = async () => {
     if (!selectedTenant?.unitId || !selectedTenant?.property?.id) {
-      toast.error("Tenant must be assigned to a unit before sending invitation");
+      toast.error(
+        "Tenant must be assigned to a unit before sending invitation",
+      );
       return;
     }
     if (!selectedTenant?.email) {
@@ -97,10 +110,39 @@ export function TenantsHeader({ selectedTenant }: TenantsHeaderProps) {
 
       // Redirect to tenants list after successful archive
       router.push("/owners/tenants");
-    } catch (error) {
+    } catch {
       toast.error("An unexpected error occurred");
     } finally {
       setIsArchiving(false);
+    }
+  };
+
+  const handleRevokeClick = () => {
+    if (!canRevoke) return;
+    setRevokeDialogOpen(true);
+  };
+
+  const handleRevoke = async () => {
+    if (!inviteId) return;
+
+    setIsRevoking(true);
+
+    try {
+      const result = await revokeInvitation(inviteId);
+
+      if (!result.success) {
+        toast.error(result.message || "Failed to revoke invitation");
+        setRevokeDialogOpen(false);
+        return;
+      }
+
+      toast.success("Invitation revoked successfully");
+      setRevokeDialogOpen(false);
+      router.refresh();
+    } catch {
+      toast.error("An unexpected error occurred");
+    } finally {
+      setIsRevoking(false);
     }
   };
 
@@ -145,6 +187,18 @@ export function TenantsHeader({ selectedTenant }: TenantsHeaderProps) {
                   <Mail className="size-4" />
                   {isResending ? "Sending..." : "Re-send Invitation"}
                 </DropdownMenuItem>
+                {canRevoke && (
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      handleRevokeClick();
+                    }}
+                    disabled={isRevoking}
+                  >
+                    <Ban className="size-4" />
+                    {isRevoking ? "Revoking..." : "Revoke Invitation"}
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem
                   onSelect={(e) => {
                     e.preventDefault();
@@ -185,6 +239,17 @@ export function TenantsHeader({ selectedTenant }: TenantsHeaderProps) {
                 <Mail aria-hidden="true" className="size-4" />
                 <span>{isResending ? "Sending..." : "Re-send Invitation"}</span>
               </Button>
+              {canRevoke && (
+                <Button
+                  variant="ghost"
+                  className="flex items-center"
+                  onClick={handleRevokeClick}
+                  disabled={isRevoking}
+                >
+                  <Ban aria-hidden="true" className="size-4" />
+                  <span>{isRevoking ? "Revoking..." : "Revoke Invitation"}</span>
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 className="flex items-center"
@@ -204,16 +269,16 @@ export function TenantsHeader({ selectedTenant }: TenantsHeaderProps) {
             <AlertDialogTitle>Archive Tenant?</AlertDialogTitle>
             <AlertDialogDescription>
               This will archive{" "}
-              <strong>{selectedTenant?.name || "this tenant"}</strong> and end their
-              lease.
+              <strong>{selectedTenant?.name || "this tenant"}</strong> and end
+              their lease.
               <span className="block mt-2">
-                All payment history, maintenance requests, and invitations will be
-                preserved for audit purposes.
+                All payment history, maintenance requests, and invitations will
+                be preserved for audit purposes.
               </span>
               {selectedTenant?.tenantStatus === "active" && (
                 <span className="block mt-2 text-muted-foreground">
-                  The lease end date will be set to today, and the tenant status will
-                  change to "archived".
+                  The lease end date will be set to today, and the tenant status
+                  will change to "archived".
                 </span>
               )}
             </AlertDialogDescription>
@@ -222,6 +287,30 @@ export function TenantsHeader({ selectedTenant }: TenantsHeaderProps) {
             <AlertDialogCancel disabled={isArchiving}>Cancel</AlertDialogCancel>
             <Button onClick={handleArchive} disabled={isArchiving}>
               {isArchiving ? "Archiving..." : "Yes, archive tenant"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={revokeDialogOpen} onOpenChange={setRevokeDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Revoke Invitation?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will invalidate the invitation link sent to{" "}
+              <strong>{selectedTenant?.email}</strong>.
+              <span className="block mt-2">
+                They will no longer be able to use it to create an account.
+              </span>
+              <span className="block mt-2 text-muted-foreground">
+                You can send a new invitation later.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isRevoking}>Cancel</AlertDialogCancel>
+            <Button onClick={handleRevoke} disabled={isRevoking}>
+              {isRevoking ? "Revoking..." : "Yes, revoke invitation"}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -445,51 +445,22 @@ export async function acceptTenantInviteWithSignup(
     // Update invite status to accepted
     await updateInviteStatusDAL(invite.id, "accepted");
 
-    // Send confirmation emails (tenant + landlord)
+    // Send confirmation email to tenant (non-blocking)
     const baseUrl = getBaseUrl(await headers());
 
-    // Send emails in parallel (non-blocking)
-    Promise.all([
-      // Email to tenant
-      fetch(`${baseUrl}/api/send`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          to: data.email,
-          subject: `Welcome to ${invite.property?.name || "your rental property"}`,
-          template: "tenant-invite-accepted",
-          firstName: data.name.split(" ")[0],
-          propertyName: invite.property?.name || invite.property?.addressLine1,
-          propertyAddress: invite.property
-            ? [
-                invite.property.addressLine1,
-                invite.property.addressLine2,
-                `${invite.property.city}, ${invite.property.state} ${invite.property.zipCode}`,
-              ]
-                .filter(Boolean)
-                .join(", ")
-            : null,
-          unitNumber: undefined,
-        }),
-      }).catch((e) => console.error("Failed to send tenant email:", e)),
-
-      // Email to landlord
-      fetch(`${baseUrl}/api/send`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          to: invite.property?.ownerId,
-          subject: `${data.name} accepted your invitation`,
-          template: "tenant-invite-accepted-landlord",
-          tenantName: data.name,
-          propertyName: invite.property?.name || invite.property?.addressLine1,
-          unitNumber: undefined,
-          acceptedAt: new Date().toISOString(),
-        }),
-      }).catch((e) => console.error("Failed to send landlord email:", e)),
-    ]).catch(() => {
-      // Emails are non-critical, don't fail the acceptance
-    });
+    fetch(`${baseUrl}/api/send`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        to: data.email,
+        subject: `Welcome to ${invite.property?.name || "your rental property"}`,
+        template: "tenant-invite-accepted",
+        firstName: data.name.split(" ")[0],
+        propertyName: invite.property?.name,
+        propertyAddress: invite.property?.address,
+        unitNumber: undefined,
+      }),
+    }).catch((e) => console.error("Failed to send tenant email:", e));
 
     revalidatePath("/owners/tenants");
 
@@ -589,50 +560,22 @@ export async function acceptTenantInviteWithLogin(
     // Update invite status to accepted
     await updateInviteStatusDAL(invite.id, "accepted");
 
-    // Send confirmation emails (tenant + landlord)
+    // Send confirmation email to tenant (non-blocking)
     const baseUrl = getBaseUrl(await headers());
 
-    Promise.all([
-      // Email to tenant
-      fetch(`${baseUrl}/api/send`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          to: user.email,
-          subject: `Welcome to ${invite.property?.name || "your rental property"}`,
-          template: "tenant-invite-accepted",
-          firstName: user.name.split(" ")[0],
-          propertyName: invite.property?.name || invite.property?.addressLine1,
-          propertyAddress: invite.property
-            ? [
-                invite.property.addressLine1,
-                invite.property.addressLine2,
-                `${invite.property.city}, ${invite.property.state} ${invite.property.zipCode}`,
-              ]
-                .filter(Boolean)
-                .join(", ")
-            : null,
-          unitNumber: undefined,
-        }),
-      }).catch((e) => console.error("Failed to send tenant email:", e)),
-
-      // Email to landlord
-      fetch(`${baseUrl}/api/send`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          to: invite.property?.ownerId,
-          subject: `${user.name} accepted your invitation`,
-          template: "tenant-invite-accepted-landlord",
-          tenantName: user.name,
-          propertyName: invite.property?.name || invite.property?.addressLine1,
-          unitNumber: undefined,
-          acceptedAt: new Date().toISOString(),
-        }),
-      }).catch((e) => console.error("Failed to send landlord email:", e)),
-    ]).catch(() => {
-      // Emails are non-critical, don't fail the acceptance
-    });
+    fetch(`${baseUrl}/api/send`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        to: user.email,
+        subject: `Welcome to ${invite.property?.name || "your rental property"}`,
+        template: "tenant-invite-accepted",
+        firstName: user.name.split(" ")[0],
+        propertyName: invite.property?.name,
+        propertyAddress: invite.property?.address,
+        unitNumber: undefined,
+      }),
+    }).catch((e) => console.error("Failed to send tenant email:", e));
 
     revalidatePath("/owners/tenants");
 
