@@ -14,7 +14,8 @@
     "auth:generate": "npx @better-auth/cli@latest generate --config ./src/lib/auth.ts --output ./src/db/schema/new-auth-schema.ts --yes",
     "test:e2e": "npx playwright test",
     "test:e2e:ui": "npx playwright test --ui",
-    "test:e2e:report": "npx playwright show-report"
+    "test:e2e:report": "npx playwright show-report",
+    "test:cleanup": "npx tsx scripts/cleanup-test-data.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

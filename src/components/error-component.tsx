@@ -11,7 +11,6 @@ interface ErrorComponentProps {
 }
 
 export default function ErrorComponent({
-  title = "Something went wrong",
   description,
   errorLabel = "Error",
   startOverHref = "/owners/properties/add-property/property-name-and-description",
@@ -24,18 +23,16 @@ export default function ErrorComponent({
       <div className="text-center">
         <p className="text-base font-semibold text-destructive">{errorLabel}</p>
         <h1 className="mt-4 text-3xl font-semibold tracking-tight text-balance text-destructive">
-          {title}
-        </h1>
-        <p className="mt-6 text-sm font-medium text-pretty text-muted-foreground">
           {description}
-        </p>
+        </h1>
+
         <div className="mt-10 flex items-center justify-center gap-x-6">
-          <Link
+          {/* <Link
             href={startOverHref}
             className="rounded-md bg-primary px-3.5 py-2.5 text-sm font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
             {startOverText}
-          </Link>
+          </Link> */}
           <Link
             href={contactSupportHref}
             className="text-sm font-semibold text-foreground"

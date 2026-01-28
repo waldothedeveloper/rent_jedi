@@ -11,11 +11,12 @@ export default async function PropertyDetailsPage({
   const { success, data, message } = await getPropertyByIdDAL(id as string);
 
   if (!success || !data) {
-    return (
-      <div className="text-center text-destructive">
-        Error: {message || "Property not found."}
-      </div>
-    );
+    throw new Error(message || "Property not found.");
+    // return (
+    //   <div className="text-center text-destructive">
+    //     Error: {message || "Property not found."}
+    //   </div>
+    // );
   }
 
   // Conditional rendering based on unit type

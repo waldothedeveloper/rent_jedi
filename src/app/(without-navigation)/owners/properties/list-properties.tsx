@@ -7,10 +7,14 @@ import {
   Grid3x2,
   List,
   MapPin,
+  PencilIcon,
+  TrashIcon,
+  ViewIcon,
 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -18,10 +22,12 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DeletePropertyDialog } from "@/components/delete-property-dialog";
 import Image from "next/image";
 import Link from "next/link";
 import defaultHouse from "@/app/images/default-house.png";
 import type { property } from "@/db/schema/properties-schema";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 type Property = typeof property.$inferSelect & {
@@ -266,7 +272,7 @@ function ListView({ properties, onPropertyClick }: ListViewProps) {
                       {property.bathrooms % 1 === 0
                         ? property.bathrooms
                         : Number.parseFloat(
-                            property.bathrooms.toString()
+                            property.bathrooms.toString(),
                           ).toFixed(1)}{" "}
                       {property.bathrooms === 1 ? "bath" : "baths"}
                     </span>
@@ -319,36 +325,66 @@ function PropertyActionsDropdown({
   property,
   onPropertyClick,
 }: PropertyActionsDropdownProps) {
+  const router = useRouter();
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-          }}
-        >
-          <EllipsisVertical className="size-4" />
-          <span className="sr-only">Property actions</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem asChild>
-          <Link
-            href={onPropertyClick(property)}
-            className="cursor-pointer block md:hidden"
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            data-testid="property-actions-dropdown-trigger"
+            variant="ghost"
+            size="icon-sm"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
           >
-            View Property
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator className="block md:hidden" />
-        <DropdownMenuItem>Edit</DropdownMenuItem>
-        <DropdownMenuItem>Move</DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+            <EllipsisVertical className="size-4" />
+            <span className="sr-only">Property actions</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem className="md:hidden">
+            <ViewIcon />
+            <Link href={onPropertyClick(property)} className="w-full md:hidden">
+              Details
+            </Link>
+          </DropdownMenuItem>
+
+          <DropdownMenuItem>
+            <PencilIcon />
+            <Link
+              className="w-full"
+              href={`/owners/properties/details/edit?id=${property.id}`}
+            >
+              Edit
+            </Link>
+          </DropdownMenuItem>
+
+          <DropdownMenuSeparator />
+          <DropdownMenuGroup>
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.preventDefault();
+                setShowDeleteDialog(true);
+              }}
+              variant="destructive"
+            >
+              <TrashIcon />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <DeletePropertyDialog
+        propertyId={property.id}
+        propertyName={property.name}
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+      />
+    </>
   );
 }

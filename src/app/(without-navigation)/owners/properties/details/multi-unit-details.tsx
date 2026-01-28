@@ -1,5 +1,6 @@
 "use client";
 
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Bath,
   Bed,
@@ -10,16 +11,15 @@ import {
   DollarSign,
   Ruler,
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PropertyActions } from "./property-actions";
 import { Separator } from "@/components/ui/separator";
-import { formatPropertyType } from "./helpers";
 import { property } from "@/db/schema/properties-schema";
 import { unit } from "@/db/schema/units-schema";
 import { useState } from "react";
+import { formatPropertyType } from "./helpers";
+import { PropertyActions } from "./property-actions";
 
 type PropertyWithUnits = typeof property.$inferSelect & {
   units: (typeof unit.$inferSelect)[];
@@ -43,7 +43,10 @@ export function MultiUnitDetails({ property }: MultiUnitDetailsProps) {
   return (
     <div className="size-full">
       {/* Header */}
-      <PropertyActions property={property} />
+      <PropertyActions
+        property={property}
+        data-testid="property-actions-dropdown"
+      />
 
       {/* Hero Section */}
       <section className="max-w-7xl mx-auto px-6 py-16 md:py-24">

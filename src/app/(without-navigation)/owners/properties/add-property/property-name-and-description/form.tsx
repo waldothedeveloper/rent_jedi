@@ -20,15 +20,15 @@ import {
   formatLabel,
   propertyTypeOptions,
 } from "@/utils/form-helpers";
-import { propertyNameFormSchema } from "@/utils/shared-schemas";
 import { revalidateLogic, useForm } from "@tanstack/react-form";
 
-import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
 import { property } from "@/db/schema/properties-schema";
+import { cn } from "@/lib/utils";
+import { propertyNameFormSchema } from "@/utils/shared-schemas";
+import { ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -74,6 +74,14 @@ export default function PropertyNameAndDescriptionForm({
     description: initialData?.description || descriptionFromStorage || "",
   };
 
+  const handleCancelPropertyCreation = () => {
+    localStorage.removeItem("draft-property-name");
+    localStorage.removeItem("draft-property-type");
+    localStorage.removeItem("draft-property-description");
+
+    router.push("/owners/properties");
+  };
+
   const form = useForm({
     defaultValues,
     validationLogic: revalidateLogic({
@@ -92,12 +100,12 @@ export default function PropertyNameAndDescriptionForm({
         localStorage.setItem("draft-property-type", value.propertyType ?? "");
         localStorage.setItem(
           "draft-property-description",
-          value.description || ""
+          value.description || "",
         );
 
         if (isEditMode && propertyId) {
           router.push(
-            `/owners/properties/add-property/address?propertyId=${propertyId}&completedSteps=1`
+            `/owners/properties/add-property/address?propertyId=${propertyId}&completedSteps=1`,
           );
         } else {
           router.push("/owners/properties/add-property/address");
@@ -165,7 +173,7 @@ export default function PropertyNameAndDescriptionForm({
                         controlClassName,
                         field.state.meta.errors.length > 0
                           ? "border-destructive"
-                          : ""
+                          : "",
                       )}
                       placeholder="Enter property name"
                       autoFocus
@@ -203,7 +211,7 @@ export default function PropertyNameAndDescriptionForm({
                         className={cn(
                           "w-full",
                           field.state.meta.errors.length > 0 &&
-                            "border-destructive"
+                            "border-destructive",
                         )}
                         onBlur={field.handleBlur}
                       >
@@ -254,7 +262,7 @@ export default function PropertyNameAndDescriptionForm({
                         controlClassName,
                         field.state.meta.errors.length > 0
                           ? "border-destructive"
-                          : ""
+                          : "",
                       )}
                       placeholder="Enter property description (optional)"
                       rows={4}
@@ -278,15 +286,18 @@ export default function PropertyNameAndDescriptionForm({
             )}
 
             <Field>
-              <div className="flex justify-end">
+              <div className="flex gap-2 items-center justify-end">
+                <Button
+                  variant="outline"
+                  type="button"
+                  onClick={handleCancelPropertyCreation}
+                >
+                  Cancel
+                </Button>
                 <form.Subscribe
                   selector={(state) => [state.canSubmit, state.isSubmitting]}
                   children={([canSubmit, isSubmitting]) => (
-                    <Button
-                      type="submit"
-                      disabled={!canSubmit || isSubmitting}
-                      className="flex items-center justify-center gap-2"
-                    >
+                    <Button type="submit" disabled={!canSubmit || isSubmitting}>
                       {isSubmitting ? "Processing..." : "Continue to Address"}
                       <ArrowRight className="size-4 text-muted" />
                     </Button>

@@ -1,6 +1,6 @@
 "server only";
 
-import { and, count, eq, isNull, sql } from "drizzle-orm";
+import { and, count, eq, isNull, ne, sql } from "drizzle-orm";
 
 import type { Roles } from "@/types/roles";
 import { auth } from "@/lib/auth";
@@ -58,9 +58,41 @@ const ERRORS = {
   FAILED_TO_DELETE_PROPERTY: "Failed to delete property. Please try again.",
   FAILED_TO_FETCH_PROPERTY: "Failed to fetch property. Please try again.",
   FAILED_TO_LIST_PROPERTIES: "Failed to list properties. Please try again.",
+  DUPLICATE_PROPERTY_ADDRESS:
+    "A property with this address already exists. Please choose a different address.",
   DUPLICATE_UNIT_NAME:
     "A unit with this name already exists for this property. Please choose a different name.",
 } as const;
+
+type PropertyAddressLookup = Pick<
+  Property,
+  "ownerId" | "addressLine1" | "city" | "state" | "zipCode" | "country"
+> & {
+  excludePropertyId?: string;
+};
+
+const getDuplicatePropertyByAddress = async (input: PropertyAddressLookup) => {
+  const conditions = [
+    eq(property.ownerId, input.ownerId),
+    eq(property.addressLine1, input.addressLine1),
+    eq(property.city, input.city),
+    eq(property.state, input.state),
+    eq(property.zipCode, input.zipCode),
+    eq(property.country, input.country),
+  ];
+
+  if (input.excludePropertyId) {
+    conditions.push(ne(property.id, input.excludePropertyId));
+  }
+
+  const existingProperty = await db
+    .select({ id: property.id })
+    .from(property)
+    .where(and(...conditions))
+    .limit(1);
+
+  return existingProperty[0];
+};
 
 /*
 
@@ -167,45 +199,61 @@ export const verifySessionDAL = cache(async () => {
 });
 
 export const createPropertyDAL = async (
-  data: Property
+  data: Property,
 ): Promise<CreateProperty> => {
-    const session = await verifySessionDAL();
+  const session = await verifySessionDAL();
 
-    if (!session) {
-      return {
-        success: false as const,
-        message: ERRORS.NOT_SIGNED_IN,
-      };
-    }
+  if (!session) {
+    return {
+      success: false as const,
+      message: ERRORS.NOT_SIGNED_IN,
+    };
+  }
 
-    if (
-      !(await canCreateProperty(session.user.id, session.user.role as Roles))
-    ) {
-      return {
-        success: false as const,
-        message: ERRORS.NO_CREATE_PROPERTY_PERMISSION,
-      };
-    }
+  if (!(await canCreateProperty(session.user.id, session.user.role as Roles))) {
+    return {
+      success: false as const,
+      message: ERRORS.NO_CREATE_PROPERTY_PERMISSION,
+    };
+  }
 
-    try {
-      const [createdProperty] = await db
-        .insert(property)
-        .values(data)
-        .returning();
+  const duplicateProperty = await getDuplicatePropertyByAddress({
+    ownerId: data.ownerId,
+    addressLine1: data.addressLine1,
+    city: data.city,
+    state: data.state,
+    zipCode: data.zipCode,
+    country: data.country,
+  });
 
-      return {
-        success: true as const,
-        data: createdProperty,
-      };
-    } catch (error) {
-      console.error("[createPropertyDAL] Error:", error);
-      return {
-        success: false as const,
-        message:
-          error instanceof Error ? error.message : ERRORS.FAILED_TO_CREATE_PROPERTY,
-      };
-    }
-  };
+  if (duplicateProperty) {
+    return {
+      success: false as const,
+      message: ERRORS.DUPLICATE_PROPERTY_ADDRESS,
+    };
+  }
+
+  try {
+    const [createdProperty] = await db
+      .insert(property)
+      .values(data)
+      .returning();
+
+    return {
+      success: true as const,
+      data: createdProperty,
+    };
+  } catch (error) {
+    console.error("[createPropertyDAL] Error:", error);
+    return {
+      success: false as const,
+      message:
+        error instanceof Error
+          ? error.message
+          : ERRORS.FAILED_TO_CREATE_PROPERTY,
+    };
+  }
+};
 
 export const listPropertiesDAL = cache(async () => {
   const session = await verifySessionDAL();
@@ -268,14 +316,16 @@ export const listPropertiesDAL = cache(async () => {
     return {
       success: false as const,
       message:
-        error instanceof Error ? error.message : ERRORS.FAILED_TO_LIST_PROPERTIES,
+        error instanceof Error
+          ? error.message
+          : ERRORS.FAILED_TO_LIST_PROPERTIES,
     };
   }
 });
 
 export const getPropertyByIdDAL = cache(
   async (
-    propertyId: string
+    propertyId: string,
   ): Promise<{
     success: boolean;
     data?: typeof property.$inferSelect & {
@@ -338,179 +388,208 @@ export const getPropertyByIdDAL = cache(
       return {
         success: false,
         message:
-          error instanceof Error ? error.message : ERRORS.FAILED_TO_FETCH_PROPERTY,
+          error instanceof Error
+            ? error.message
+            : ERRORS.FAILED_TO_FETCH_PROPERTY,
       };
     }
-  }
+  },
 );
 
 export const createUnitDAL = async (
-  data: Unit
+  data: Unit,
 ): Promise<{
-    success: boolean;
-    data?: Unit;
-    message?: string;
-  }> => {
-    const session = await verifySessionDAL();
+  success: boolean;
+  data?: Unit;
+  message?: string;
+}> => {
+  const session = await verifySessionDAL();
 
-    if (!session) {
-      return {
-        success: false,
-        message: ERRORS.NOT_SIGNED_IN,
-      };
-    }
+  if (!session) {
+    return {
+      success: false,
+      message: ERRORS.NOT_SIGNED_IN,
+    };
+  }
 
-    if (!(await canCreateUnit(session.user.id, session.user.role as Roles))) {
-      return {
-        success: false,
-        message: ERRORS.NO_CREATE_UNIT_PERMISSION,
-      };
-    }
+  if (!(await canCreateUnit(session.user.id, session.user.role as Roles))) {
+    return {
+      success: false,
+      message: ERRORS.NO_CREATE_UNIT_PERMISSION,
+    };
+  }
 
-    try {
-      const [createdUnit] = await db.insert(unit).values(data).returning();
+  try {
+    const [createdUnit] = await db.insert(unit).values(data).returning();
 
-      return {
-        success: true,
-        data: createdUnit,
-      };
-    } catch (error) {
-      console.error("[createUnitDAL] Error:", error);
-      return {
-        success: false,
-        message:
-          error instanceof Error ? error.message : ERRORS.FAILED_TO_CREATE_UNIT,
-      };
-    }
-  };
+    return {
+      success: true,
+      data: createdUnit,
+    };
+  } catch (error) {
+    console.error("[createUnitDAL] Error:", error);
+    return {
+      success: false,
+      message:
+        error instanceof Error ? error.message : ERRORS.FAILED_TO_CREATE_UNIT,
+    };
+  }
+};
 
 export const createUnitsDAL = async (
-  unitsData: (typeof unit.$inferInsert)[]
+  unitsData: (typeof unit.$inferInsert)[],
 ): Promise<{
-    success: boolean;
-    data?: (typeof unit.$inferSelect)[];
-    message?: string;
-  }> => {
-    const session = await verifySessionDAL();
+  success: boolean;
+  data?: (typeof unit.$inferSelect)[];
+  message?: string;
+}> => {
+  const session = await verifySessionDAL();
 
-    if (!session) {
+  if (!session) {
+    return {
+      success: false,
+      message: ERRORS.NOT_SIGNED_IN,
+    };
+  }
+
+  if (!(await canCreateUnit(session.user.id, session.user.role as Roles))) {
+    return {
+      success: false,
+      message: ERRORS.NO_CREATE_UNIT_PERMISSION,
+    };
+  }
+
+  try {
+    // Batch insert all units
+    const createdUnits = await db.insert(unit).values(unitsData).returning();
+
+    return {
+      success: true,
+      data: createdUnits,
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    // Detect unique constraint violations
+    if (
+      errorMessage.includes("23505") ||
+      errorMessage.includes("unique constraint") ||
+      errorMessage.includes("duplicate key")
+    ) {
       return {
         success: false,
-        message: ERRORS.NOT_SIGNED_IN,
+        message: ERRORS.DUPLICATE_UNIT_NAME,
       };
     }
 
-    if (!(await canCreateUnit(session.user.id, session.user.role as Roles))) {
-      return {
-        success: false,
-        message: ERRORS.NO_CREATE_UNIT_PERMISSION,
-      };
-    }
-
-    try {
-      // Batch insert all units
-      const createdUnits = await db.insert(unit).values(unitsData).returning();
-
-      return {
-        success: true,
-        data: createdUnits,
-      };
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-
-      // Detect unique constraint violations
-      if (
-        errorMessage.includes("23505") ||
-        errorMessage.includes("unique constraint") ||
-        errorMessage.includes("duplicate key")
-      ) {
-        return {
-          success: false,
-          message: ERRORS.DUPLICATE_UNIT_NAME,
-        };
-      }
-
-      return {
-        success: false,
-        message: errorMessage || ERRORS.FAILED_TO_CREATE_UNITS,
-      };
-    }
-  };
+    return {
+      success: false,
+      message: errorMessage || ERRORS.FAILED_TO_CREATE_UNITS,
+    };
+  }
+};
 
 export const updatePropertyDraftDAL = async (
   propertyId: string,
-  data: Partial<typeof property.$inferInsert>
+  data: Partial<typeof property.$inferInsert>,
 ): Promise<{
-    success: boolean;
-    data?: typeof property.$inferSelect;
-    message?: string;
-  }> => {
-    const session = await verifySessionDAL();
+  success: boolean;
+  data?: typeof property.$inferSelect;
+  message?: string;
+}> => {
+  const session = await verifySessionDAL();
 
-    if (!session) {
-      return {
-        success: false,
-        message: ERRORS.NOT_SIGNED_IN,
-      };
-    }
+  if (!session) {
+    return {
+      success: false,
+      message: ERRORS.NOT_SIGNED_IN,
+    };
+  }
 
-    try {
-      // Run permission check and existence check in parallel
-      const [hasPermission, existingProperty] = await Promise.all([
-        canUpdateProperty(session.user.id, session.user.role as Roles),
-        db
-          .select()
-          .from(property)
-          .where(eq(property.id, propertyId))
-          .limit(1)
-          .then((rows) => rows[0]),
-      ]);
-
-      if (!hasPermission) {
-        return {
-          success: false,
-          message: ERRORS.NO_UPDATE_PROPERTY_PERMISSION,
-        };
-      }
-
-      if (!existingProperty) {
-        return {
-          success: false,
-          message: ERRORS.PROPERTY_NOT_FOUND,
-        };
-      }
-
-      if (existingProperty.ownerId !== session.user.id) {
-        return {
-          success: false,
-          message: ERRORS.NOT_PROPERTY_OWNER,
-        };
-      }
-
-      // Update the property
-      const [updatedProperty] = await db
-        .update(property)
-        .set({
-          ...data,
-          updatedAt: new Date(),
-        })
+  try {
+    // Run permission check and existence check in parallel
+    const [hasPermission, existingProperty] = await Promise.all([
+      canUpdateProperty(session.user.id, session.user.role as Roles),
+      db
+        .select()
+        .from(property)
         .where(eq(property.id, propertyId))
-        .returning();
+        .limit(1)
+        .then((rows) => rows[0]),
+    ]);
 
-      return {
-        success: true,
-        data: updatedProperty,
-      };
-    } catch (error) {
-      console.error("[updatePropertyDraftDAL] Error:", error);
+    if (!hasPermission) {
       return {
         success: false,
-        message:
-          error instanceof Error ? error.message : ERRORS.FAILED_TO_UPDATE_PROPERTY,
+        message: ERRORS.NO_UPDATE_PROPERTY_PERMISSION,
       };
     }
-  };
+
+    if (!existingProperty) {
+      return {
+        success: false,
+        message: ERRORS.PROPERTY_NOT_FOUND,
+      };
+    }
+
+    if (existingProperty.ownerId !== session.user.id) {
+      return {
+        success: false,
+        message: ERRORS.NOT_PROPERTY_OWNER,
+      };
+    }
+
+    const hasAddressUpdate =
+      typeof data.addressLine1 === "string" ||
+      typeof data.city === "string" ||
+      typeof data.state === "string" ||
+      typeof data.zipCode === "string" ||
+      typeof data.country === "string";
+
+    if (hasAddressUpdate) {
+      const duplicateProperty = await getDuplicatePropertyByAddress({
+        ownerId: existingProperty.ownerId,
+        addressLine1: data.addressLine1 ?? existingProperty.addressLine1,
+        city: data.city ?? existingProperty.city,
+        state: data.state ?? existingProperty.state,
+        zipCode: data.zipCode ?? existingProperty.zipCode,
+        country: data.country ?? existingProperty.country,
+        excludePropertyId: existingProperty.id,
+      });
+
+      if (duplicateProperty) {
+        return {
+          success: false,
+          message: ERRORS.DUPLICATE_PROPERTY_ADDRESS,
+        };
+      }
+    }
+
+    // Update the property
+    const [updatedProperty] = await db
+      .update(property)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .where(eq(property.id, propertyId))
+      .returning();
+
+    return {
+      success: true,
+      data: updatedProperty,
+    };
+  } catch (error) {
+    console.error("[updatePropertyDraftDAL] Error:", error);
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : ERRORS.FAILED_TO_UPDATE_PROPERTY,
+    };
+  }
+};
 
 export const getDraftPropertyByOwnerDAL = cache(
   async (): Promise<{
@@ -559,7 +638,7 @@ export const getDraftPropertyByOwnerDAL = cache(
         .from(property)
         .leftJoin(unit, eq(property.id, unit.propertyId))
         .where(
-          sql`${property.ownerId} = ${session.user.id} AND ${property.propertyStatus} = 'draft'`
+          sql`${property.ownerId} = ${session.user.id} AND ${property.propertyStatus} = 'draft'`,
         )
         .groupBy(property.id)
         .limit(1);
@@ -590,12 +669,12 @@ export const getDraftPropertyByOwnerDAL = cache(
             : ERRORS.FAILED_TO_FETCH_PROPERTY,
       };
     }
-  }
+  },
 );
 
 export const getPropertyWithUnitsCountDAL = cache(
   async (
-    propertyId: string
+    propertyId: string,
   ): Promise<{
     success: boolean;
     data?: {
@@ -684,150 +763,154 @@ export const getPropertyWithUnitsCountDAL = cache(
       return {
         success: false,
         message:
-          error instanceof Error ? error.message : ERRORS.FAILED_TO_FETCH_PROPERTY,
+          error instanceof Error
+            ? error.message
+            : ERRORS.FAILED_TO_FETCH_PROPERTY,
       };
     }
-  }
+  },
 );
 
 export const updateUnitDAL = async (
   unitId: string,
-  data: Partial<typeof unit.$inferInsert>
+  data: Partial<typeof unit.$inferInsert>,
 ): Promise<{
-    success: boolean;
-    data?: typeof unit.$inferSelect;
-    message?: string;
-  }> => {
-    const session = await verifySessionDAL();
+  success: boolean;
+  data?: typeof unit.$inferSelect;
+  message?: string;
+}> => {
+  const session = await verifySessionDAL();
 
-    if (!session) {
-      return {
-        success: false,
-        message: ERRORS.NOT_SIGNED_IN,
-      };
-    }
+  if (!session) {
+    return {
+      success: false,
+      message: ERRORS.NOT_SIGNED_IN,
+    };
+  }
 
-    try {
-      // Run permission check and unit existence check in parallel
-      const [hasPermission, existingUnit] = await Promise.all([
-        canCreateUnit(session.user.id, session.user.role as Roles),
-        db
-          .select({
-            unitId: unit.id,
-            propertyId: unit.propertyId,
-            ownerId: property.ownerId,
-          })
-          .from(unit)
-          .innerJoin(property, eq(unit.propertyId, property.id))
-          .where(eq(unit.id, unitId))
-          .limit(1)
-          .then((rows) => rows[0]),
-      ]);
-
-      if (!hasPermission) {
-        return {
-          success: false,
-          message: ERRORS.NO_UPDATE_UNIT_PERMISSION,
-        };
-      }
-
-      if (!existingUnit) {
-        return {
-          success: false,
-          message: ERRORS.UNIT_NOT_FOUND,
-        };
-      }
-
-      if (existingUnit.ownerId !== session.user.id) {
-        return {
-          success: false,
-          message: ERRORS.NOT_UNIT_OWNER,
-        };
-      }
-
-      // Update the unit
-      const [updatedUnit] = await db
-        .update(unit)
-        .set(data)
+  try {
+    // Run permission check and unit existence check in parallel
+    const [hasPermission, existingUnit] = await Promise.all([
+      canCreateUnit(session.user.id, session.user.role as Roles),
+      db
+        .select({
+          unitId: unit.id,
+          propertyId: unit.propertyId,
+          ownerId: property.ownerId,
+        })
+        .from(unit)
+        .innerJoin(property, eq(unit.propertyId, property.id))
         .where(eq(unit.id, unitId))
-        .returning();
+        .limit(1)
+        .then((rows) => rows[0]),
+    ]);
 
-      return {
-        success: true,
-        data: updatedUnit,
-      };
-    } catch (error) {
-      console.error("[updateUnitDAL] Error:", error);
+    if (!hasPermission) {
       return {
         success: false,
-        message:
-          error instanceof Error ? error.message : ERRORS.FAILED_TO_CREATE_UNIT,
+        message: ERRORS.NO_UPDATE_UNIT_PERMISSION,
       };
     }
-  };
+
+    if (!existingUnit) {
+      return {
+        success: false,
+        message: ERRORS.UNIT_NOT_FOUND,
+      };
+    }
+
+    if (existingUnit.ownerId !== session.user.id) {
+      return {
+        success: false,
+        message: ERRORS.NOT_UNIT_OWNER,
+      };
+    }
+
+    // Update the unit
+    const [updatedUnit] = await db
+      .update(unit)
+      .set(data)
+      .where(eq(unit.id, unitId))
+      .returning();
+
+    return {
+      success: true,
+      data: updatedUnit,
+    };
+  } catch (error) {
+    console.error("[updateUnitDAL] Error:", error);
+    return {
+      success: false,
+      message:
+        error instanceof Error ? error.message : ERRORS.FAILED_TO_CREATE_UNIT,
+    };
+  }
+};
 
 export const deletePropertyDAL = async (
-  propertyId: string
+  propertyId: string,
 ): Promise<{
-    success: boolean;
-    message?: string;
-  }> => {
-    const session = await verifySessionDAL();
+  success: boolean;
+  message?: string;
+}> => {
+  const session = await verifySessionDAL();
 
-    if (!session) {
+  if (!session) {
+    return {
+      success: false,
+      message: ERRORS.NOT_SIGNED_IN,
+    };
+  }
+
+  try {
+    // Run permission check and existence check in parallel
+    const [hasPermission, existingProperty] = await Promise.all([
+      canDeleteProperty(session.user.id, session.user.role as Roles),
+      db
+        .select()
+        .from(property)
+        .where(eq(property.id, propertyId))
+        .limit(1)
+        .then((rows) => rows[0]),
+    ]);
+
+    if (!hasPermission) {
       return {
         success: false,
-        message: ERRORS.NOT_SIGNED_IN,
+        message: ERRORS.NO_DELETE_PROPERTY_PERMISSION,
       };
     }
 
-    try {
-      // Run permission check and existence check in parallel
-      const [hasPermission, existingProperty] = await Promise.all([
-        canDeleteProperty(session.user.id, session.user.role as Roles),
-        db
-          .select()
-          .from(property)
-          .where(eq(property.id, propertyId))
-          .limit(1)
-          .then((rows) => rows[0]),
-      ]);
-
-      if (!hasPermission) {
-        return {
-          success: false,
-          message: ERRORS.NO_DELETE_PROPERTY_PERMISSION,
-        };
-      }
-
-      if (!existingProperty) {
-        return {
-          success: false,
-          message: ERRORS.PROPERTY_NOT_FOUND,
-        };
-      }
-
-      if (existingProperty.ownerId !== session.user.id) {
-        return {
-          success: false,
-          message: ERRORS.NOT_PROPERTY_OWNER,
-        };
-      }
-
-      await db.delete(property).where(eq(property.id, propertyId));
-
-      return {
-        success: true,
-      };
-    } catch (error) {
-      console.error("[deletePropertyDAL] Error:", error);
+    if (!existingProperty) {
       return {
         success: false,
-        message:
-          error instanceof Error ? error.message : ERRORS.FAILED_TO_DELETE_PROPERTY,
+        message: ERRORS.PROPERTY_NOT_FOUND,
       };
     }
-  };
+
+    if (existingProperty.ownerId !== session.user.id) {
+      return {
+        success: false,
+        message: ERRORS.NOT_PROPERTY_OWNER,
+      };
+    }
+
+    await db.delete(property).where(eq(property.id, propertyId));
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error("[deletePropertyDAL] Error:", error);
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : ERRORS.FAILED_TO_DELETE_PROPERTY,
+    };
+  }
+};
 
 /**
  * Get all properties with available unit counts for tenant creation dropdown
@@ -897,10 +980,12 @@ export const getPropertiesWithAvailableUnitsDAL = cache(
       return {
         success: false,
         message:
-          error instanceof Error ? error.message : ERRORS.FAILED_TO_LIST_PROPERTIES,
+          error instanceof Error
+            ? error.message
+            : ERRORS.FAILED_TO_LIST_PROPERTIES,
       };
     }
-  }
+  },
 );
 
 /**
@@ -908,7 +993,7 @@ export const getPropertiesWithAvailableUnitsDAL = cache(
  */
 export const getAvailableUnitsByPropertyDAL = cache(
   async (
-    propertyId: string
+    propertyId: string,
   ): Promise<{
     success: boolean;
     data?: (typeof unit.$inferSelect)[];
@@ -939,7 +1024,7 @@ export const getAvailableUnitsByPropertyDAL = cache(
           .from(unit)
           .leftJoin(
             tenant,
-            and(eq(unit.id, tenant.unitId), isNull(tenant.leaseEndDate))
+            and(eq(unit.id, tenant.unitId), isNull(tenant.leaseEndDate)),
           )
           .where(and(eq(unit.propertyId, propertyId), isNull(tenant.id))),
       ]);
@@ -972,5 +1057,5 @@ export const getAvailableUnitsByPropertyDAL = cache(
             : "Failed to fetch available units.",
       };
     }
-  }
+  },
 );
