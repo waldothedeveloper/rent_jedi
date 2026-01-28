@@ -46,6 +46,7 @@ export function TenantsHeader({
 
   const canRevoke =
     selectedTenant?.email && inviteStatus === "pending" && inviteId;
+  const canResendInvite = inviteStatus !== "accepted";
 
   const handleResendInvitation = async () => {
     if (!selectedTenant?.unitId || !selectedTenant?.property?.id) {
@@ -180,13 +181,15 @@ export function TenantsHeader({
                     Edit Tenant
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={handleResendInvitation}
-                  disabled={isResending}
-                >
-                  <Mail className="size-4" />
-                  {isResending ? "Sending..." : "Re-send Invitation"}
-                </DropdownMenuItem>
+                {canResendInvite && (
+                  <DropdownMenuItem
+                    onClick={handleResendInvitation}
+                    disabled={isResending}
+                  >
+                    <Mail className="size-4" />
+                    {isResending ? "Sending..." : "Re-send Invitation"}
+                  </DropdownMenuItem>
+                )}
                 {canRevoke && (
                   <DropdownMenuItem
                     onSelect={(e) => {
@@ -230,15 +233,17 @@ export function TenantsHeader({
                   <span>Edit Tenant</span>
                 </Link>
               </Button>
-              <Button
-                variant="ghost"
-                className="flex items-center"
-                onClick={handleResendInvitation}
-                disabled={isResending}
-              >
-                <Mail aria-hidden="true" className="size-4" />
-                <span>{isResending ? "Sending..." : "Re-send Invitation"}</span>
-              </Button>
+              {canResendInvite && (
+                <Button
+                  variant="ghost"
+                  className="flex items-center"
+                  onClick={handleResendInvitation}
+                  disabled={isResending}
+                >
+                  <Mail aria-hidden="true" className="size-4" />
+                  <span>{isResending ? "Sending..." : "Re-send Invitation"}</span>
+                </Button>
+              )}
               {canRevoke && (
                 <Button
                   variant="ghost"
