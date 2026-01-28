@@ -26,12 +26,35 @@ export type InviteWithDetails = InviteSelect & {
   tenant?: typeof tenant.$inferSelect | null;
 };
 
+// DTO for public invite token lookup - minimal fields for invite acceptance page
+// Note: tenantId is included for server-side processing but should NOT be exposed to client
+export type InviteByTokenDTO = {
+  id: string;
+  tenantId: string | null;
+  status: "pending" | "accepted" | "expired" | "revoked";
+  expiresAt: Date | null;
+  inviteeName: string | null;
+  inviteeEmail: string;
+  role: string;
+  property: {
+    name: string | null;
+    address: string; // Formatted address string
+  } | null;
+  tenant: {
+    name: string;
+  } | null;
+};
+
 type CreateInviteResult =
   | { success: true; data: InviteSelect }
   | { success: false; message: string };
 
 type GetInviteResult =
   | { success: true; data?: InviteWithDetails }
+  | { success: false; message: string };
+
+type GetInviteByTokenResult =
+  | { success: true; data: InviteByTokenDTO }
   | { success: false; message: string };
 
 type UpdateInviteResult =
@@ -303,7 +326,6 @@ export const createInviteDAL = async (data: {
 
 export const getInviteByIdDAL = cache(
   async (inviteId: string): Promise<GetInviteResult> => {
-    // Start both operations immediately - query runs while auth resolves
     const sessionPromise = verifySessionDAL();
     const queryPromise = db
       .select({
@@ -331,7 +353,6 @@ export const getInviteByIdDAL = cache(
       return { success: false, message: ERRORS.NO_VIEW_PERMISSION };
     }
 
-    // Query already in flight, just await result
     const results = await queryPromise;
     const result = results[0];
 
@@ -339,7 +360,6 @@ export const getInviteByIdDAL = cache(
       return { success: false, message: ERRORS.INVITE_NOT_FOUND };
     }
 
-    // Verify ownership
     if (result.invite.ownerId !== session.user.id) {
       return { success: false, message: ERRORS.NO_VIEW_THIS_INVITE };
     }
@@ -349,12 +369,23 @@ export const getInviteByIdDAL = cache(
 );
 
 export const getInviteByTokenDAL = cache(
-  async (tokenValue: string): Promise<GetInviteResult> => {
+  async (tokenValue: string): Promise<GetInviteByTokenResult> => {
+    // Only select the specific fields needed for the invite acceptance page
     const results = await db
       .select({
-        invite: invite,
-        property: property,
-        tenant: tenant,
+        id: invite.id,
+        tenantId: invite.tenantId,
+        status: invite.status,
+        expiresAt: invite.expiresAt,
+        inviteeName: invite.inviteeName,
+        inviteeEmail: invite.inviteeEmail,
+        role: invite.role,
+        propertyName: property.name,
+        propertyAddressLine1: property.addressLine1,
+        propertyCity: property.city,
+        propertyState: property.state,
+        propertyZipCode: property.zipCode,
+        tenantName: tenant.name,
       })
       .from(invite)
       .leftJoin(property, eq(invite.propertyId, property.id))
@@ -368,30 +399,50 @@ export const getInviteByTokenDAL = cache(
       return { success: false, message: ERRORS.INVITE_NOT_FOUND_OR_EXPIRED };
     }
 
-    const inviteRecord = result.invite;
-
     // Check if expired
-    if (inviteRecord.expiresAt && new Date() > inviteRecord.expiresAt) {
+    if (result.expiresAt && new Date() > result.expiresAt) {
       // Auto-update status to expired if still pending
-      if (inviteRecord.status === "pending") {
+      if (result.status === "pending") {
         await db
           .update(invite)
           .set({ status: "expired" })
-          .where(eq(invite.id, inviteRecord.id));
+          .where(eq(invite.id, result.id));
       }
 
       return { success: false, message: ERRORS.INVITE_EXPIRED };
     }
 
     // Check if already used or revoked
-    if (inviteRecord.status !== "pending") {
+    if (result.status !== "pending") {
       return {
         success: false,
-        message: `This invitation has already been ${inviteRecord.status}.`,
+        message: `This invitation has been ${result.status}. If you believe this is an error, please contact your landlord.`,
       };
     }
 
-    return { success: true, data: buildInviteWithDetails(result) };
+    // Build the DTO with only the fields needed for the acceptance page
+    const dto: InviteByTokenDTO = {
+      id: result.id,
+      tenantId: result.tenantId,
+      status: result.status,
+      expiresAt: result.expiresAt,
+      inviteeName: result.inviteeName,
+      inviteeEmail: result.inviteeEmail,
+      role: result.role,
+      property: result.propertyAddressLine1
+        ? {
+            name: result.propertyName,
+            address: `${result.propertyAddressLine1}, ${result.propertyCity}, ${result.propertyState} ${result.propertyZipCode}`,
+          }
+        : null,
+      tenant: result.tenantName
+        ? {
+            name: result.tenantName,
+          }
+        : null,
+    };
+
+    return { success: true, data: dto };
   },
 );
 
@@ -483,6 +534,52 @@ export const revokeInviteDAL = async (
 ): Promise<UpdateInviteResult> => {
   return updateInviteStatusDAL(inviteId, "revoked");
 };
+
+export const getInviteByTenantIdDAL = cache(
+  async (tenantId: string): Promise<GetInviteResult> => {
+    const sessionPromise = verifySessionDAL();
+    const queryPromise = db
+      .select({
+        invite: invite,
+        property: property,
+        tenant: tenant,
+      })
+      .from(invite)
+      .leftJoin(property, eq(invite.propertyId, property.id))
+      .leftJoin(tenant, eq(invite.tenantId, tenant.id))
+      .where(eq(invite.tenantId, tenantId))
+      .orderBy(desc(invite.createdAt))
+      .limit(1);
+
+    const session = await sessionPromise;
+    if (!session) {
+      return { success: false, message: ERRORS.NOT_SIGNED_IN_VIEW };
+    }
+
+    const hasPermission = await canViewInvite(
+      session.user.id,
+      session.user.role as Roles,
+    );
+
+    if (!hasPermission) {
+      return { success: false, message: ERRORS.NO_VIEW_PERMISSION };
+    }
+
+    const results = await queryPromise;
+    const result = results[0];
+
+    if (!result) {
+      return { success: true, data: undefined };
+    }
+
+    // Verify ownership
+    if (result.invite.ownerId !== session.user.id) {
+      return { success: false, message: ERRORS.NO_VIEW_THIS_INVITE };
+    }
+
+    return { success: true, data: buildInviteWithDetails(result) };
+  },
+);
 
 export const linkTenantToUserDAL = async (
   tenantId: string,

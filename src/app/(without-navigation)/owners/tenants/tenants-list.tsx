@@ -10,28 +10,59 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { TenantWithDetails } from "@/dal/tenants";
+import type { InviteWithDetails } from "@/dal/invites";
 import { TenantsHeader } from "./tenants-header";
 import { cn } from "@/lib/utils";
 import { useRouter, useSearchParams } from "next/navigation";
 
 interface TenantsListProps {
   tenants: TenantWithDetails[];
+  invites?: InviteWithDetails[];
 }
 
-export function TenantsList({ tenants }: TenantsListProps) {
+export function TenantsList({ tenants, invites = [] }: TenantsListProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const selectedTenantId = searchParams.get("tenantId");
 
   const selectedTenant = tenants.find((t) => t.id === selectedTenantId);
 
+  // Find the most recent invite for the selected tenant
+  const selectedTenantInvite = selectedTenant
+    ? invites
+        .filter((inv) => inv.tenantId === selectedTenant.id)
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        )[0]
+    : undefined;
+
   const handleTenantSelect = (tenantId: string) => {
     router.push(`/owners/tenants?tenantId=${tenantId}`, { scroll: false });
   };
 
+  const getInviteStatusBadge = (status: string) => {
+    switch (status) {
+      case "pending":
+        return <Badge variant="secondary">Pending</Badge>;
+      case "accepted":
+        return <Badge variant="default">Accepted</Badge>;
+      case "revoked":
+        return <Badge variant="destructive">Revoked</Badge>;
+      case "expired":
+        return <Badge variant="outline">Expired</Badge>;
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="flex h-full flex-col gap-6">
-      <TenantsHeader selectedTenant={selectedTenant ?? null} />
+      <TenantsHeader
+        selectedTenant={selectedTenant ?? null}
+        inviteStatus={selectedTenantInvite?.status}
+        inviteId={selectedTenantInvite?.id}
+      />
       <div className="flex min-h-0 flex-1 flex-col gap-6 md:flex-row">
         {selectedTenantId && (
           <div className="flex items-center md:hidden">
@@ -279,6 +310,66 @@ export function TenantsList({ tenants }: TenantsListProps) {
                       </div>
                     </dl>
                   </section>
+
+                  {/* Invitation Status */}
+                  {selectedTenantInvite && (
+                    <section>
+                      <h2 className="text-sm font-medium text-muted-foreground">
+                        Invitation Status
+                      </h2>
+                      <dl className="mt-4 grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
+                        <div className="sm:col-span-1">
+                          <dt className="text-sm font-medium text-muted-foreground">
+                            Status
+                          </dt>
+                          <dd className="mt-1 text-sm text-foreground">
+                            {getInviteStatusBadge(selectedTenantInvite.status)}
+                          </dd>
+                        </div>
+                        <div className="sm:col-span-1">
+                          <dt className="text-sm font-medium text-muted-foreground">
+                            Sent
+                          </dt>
+                          <dd className="mt-1 text-sm text-foreground">
+                            {formatDate(selectedTenantInvite.createdAt)}
+                          </dd>
+                        </div>
+                        {selectedTenantInvite.status === "pending" &&
+                          selectedTenantInvite.expiresAt && (
+                            <div className="sm:col-span-1">
+                              <dt className="text-sm font-medium text-muted-foreground">
+                                Expires
+                              </dt>
+                              <dd className="mt-1 text-sm text-foreground">
+                                {formatDate(selectedTenantInvite.expiresAt)}
+                              </dd>
+                            </div>
+                          )}
+                        {selectedTenantInvite.status === "accepted" &&
+                          selectedTenantInvite.acceptedAt && (
+                            <div className="sm:col-span-1">
+                              <dt className="text-sm font-medium text-muted-foreground">
+                                Accepted
+                              </dt>
+                              <dd className="mt-1 text-sm text-foreground">
+                                {formatDate(selectedTenantInvite.acceptedAt)}
+                              </dd>
+                            </div>
+                          )}
+                        {selectedTenantInvite.status === "revoked" &&
+                          selectedTenantInvite.revokedAt && (
+                            <div className="sm:col-span-1">
+                              <dt className="text-sm font-medium text-muted-foreground">
+                                Revoked
+                              </dt>
+                              <dd className="mt-1 text-sm text-foreground">
+                                {formatDate(selectedTenantInvite.revokedAt)}
+                              </dd>
+                            </div>
+                          )}
+                      </dl>
+                    </section>
+                  )}
 
                   {/* Status */}
                   {/* <section>
