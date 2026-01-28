@@ -1,10 +1,6 @@
 import type { Page } from "@playwright/test";
 import { SignJWT } from "jose";
 
-/**
- * Test credentials for use in authentication tests
- * Note: These should be test accounts created in your test database
- */
 export const TEST_CREDENTIALS = {
   owner: {
     email: "e2e-owner@example.com",
@@ -18,17 +14,20 @@ export const TEST_CREDENTIALS = {
     email: "nonexistent@example.com",
     password: "WrongPassword123!",
   },
-  // Add test user with 2FA enabled
+
   withTwoFactor: {
     email: "e2e-owner-2fa@example.com",
     password: "TestPassword123!",
     totpSecret: "JBSWY3DPEHPK3PXP", // Base32 encoded secret for testing
   },
+  existingProperty: {
+    addressLine1: "10503 W 33rd ct",
+    city: "Hialeah",
+    state: "FL",
+    zipCode: "33018",
+  },
 };
 
-/**
- * Performs a complete login flow
- */
 export async function login(page: Page, email: string, password: string) {
   await page.goto("/login");
   const emailInput = page.getByLabel(/^email$/i);
@@ -42,9 +41,6 @@ export async function login(page: Page, email: string, password: string) {
   await submitButton.click();
 }
 
-/**
- * Clears all authentication cookies and storage
- */
 export async function clearAuth(page: Page) {
   await page.context().clearCookies();
 
@@ -68,7 +64,7 @@ async function createEmailVerificationToken(email: string) {
   const secret = process.env.BETTER_AUTH_SECRET;
   if (!secret) {
     throw new Error(
-      "BETTER_AUTH_SECRET is required to generate email verification tokens."
+      "BETTER_AUTH_SECRET is required to generate email verification tokens.",
     );
   }
 
@@ -85,11 +81,11 @@ async function createEmailVerificationToken(email: string) {
 export async function verifyEmailAndRedirect(
   page: Page,
   email: string,
-  callbackPath: string
+  callbackPath: string,
 ) {
   const token = await createEmailVerificationToken(email);
   const callbackURL = encodeURIComponent(callbackPath);
   await page.goto(
-    `/api/auth/verify-email?token=${token}&callbackURL=${callbackURL}`
+    `/api/auth/verify-email?token=${token}&callbackURL=${callbackURL}`,
   );
 }
