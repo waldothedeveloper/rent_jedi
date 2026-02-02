@@ -114,15 +114,11 @@ export const auth = betterAuth({
     user: {
       create: {
         before: async (user) => {
-          // Priority order for role assignment:
-          // 1. Role provided during signup (from role selection)
-          // 2. Role from pending tenant invite
-          // 3. Default to owner
-
-          // Check if role was provided during signup
-          if (user.role && (user.role === "owner" || user.role === "tenant")) {
-            return { data: user };
-          }
+          // Sanitize role - only allow owner/tenant, never admin
+          const safeRole =
+            user.role === "owner" || user.role === "tenant"
+              ? user.role
+              : "owner";
 
           // Check for pending tenant invite
           if (user.email) {
@@ -139,25 +135,59 @@ export const auth = betterAuth({
               pendingInvite.role === "tenant"
             ) {
               return {
-                data: {
-                  ...user,
-                  role: "tenant",
-                },
+                data: { ...user, role: "tenant" },
               };
             }
           }
 
-          // Default to owner
           return {
-            data: {
-              ...user,
-              role: "owner",
-            },
+            data: { ...user, role: safeRole },
           };
         },
       },
     },
   },
+
+  // databaseHooks: {
+  //   user: {
+  //     create: {
+  //       before: async (user) => {
+  //         // Check for pending tenant invite
+  //         if (user.email) {
+  //           console.log(
+  //             "auth databaseHooks: Checking for pending invites for new user:",
+  //             user.email,
+  //           );
+  //           const pendingInvite = await db
+  //             .select()
+  //             .from(invite)
+  //             .where(eq(invite.inviteeEmail, user.email.toLowerCase()))
+  //             .limit(1)
+  //             .then((rows) => rows[0]);
+
+  //           if (
+  //             pendingInvite &&
+  //             pendingInvite.status === "pending" &&
+  //             pendingInvite.role === "tenant"
+  //           ) {
+  //             return {
+  //               data: {
+  //                 ...user,
+  //                 role: "tenant",
+  //               },
+  //             };
+  //           }
+  //         }
+
+  //         return {
+  //           data: {
+  //             ...user,
+  //           },
+  //         };
+  //       },
+  //     },
+  //   },
+  // },
 
   database: drizzleAdapter(db, {
     provider: "pg",

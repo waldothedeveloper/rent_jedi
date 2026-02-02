@@ -13,6 +13,7 @@ export default async function AuthSuccessPage() {
   }
 
   const role = session.user.role;
+  console.log("role passed to getRedirectUrlByRole: ", role);
   const redirectUrl = getRedirectUrlByRole(role);
   redirect(redirectUrl);
 }

@@ -8,6 +8,7 @@ import {
   totpSchema,
 } from "@/lib/shared-auth-schema";
 
+import { APIError } from "better-auth/api";
 import { auth } from "@/lib/auth";
 import { getRedirectUrlByRole } from "@/lib/auth-utils";
 import { headers } from "next/headers";
@@ -15,24 +16,6 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 type HeadersLike = Pick<Headers, "get"> | null | undefined;
-
-type LoginError = {
-  status: string;
-  body: { code: string; message: string };
-  headers: {};
-  statusCode: number;
-  name: string;
-};
-
-function isLoginError(e: unknown): e is LoginError {
-  return (
-    typeof e === "object" &&
-    e !== null &&
-    "body" in e &&
-    // I will accept as any here since body is not standard
-    typeof (e as any).body?.code === "string"
-  );
-}
 
 function getBaseUrl(headersList?: HeadersLike) {
   const envUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL;
@@ -100,15 +83,32 @@ export async function signUpAction(credentials: z.infer<typeof signUpSchema>) {
   }
   const { name, email, password, role } = result.data;
 
-  await auth.api.signUpEmail({
-    body: {
-      email,
-      password,
-      name,
-    },
-  });
+  try {
+    const data = await auth.api.signUpEmail({
+      body: {
+        email,
+        password,
+        name,
+      },
+      asResponse: true,
+    });
 
-  redirect(`/verify-email`);
+    console.log(`Sign-up response data: `, data);
+
+    // redirect(`/verify-email`);
+  } catch (error) {
+    if (error instanceof APIError) {
+      return {
+        success: false as const,
+        message: error.message || "Unable to create account. Please try again.",
+      };
+    }
+
+    return {
+      success: false as const,
+      message: "Unable to create account. Please try again.",
+    };
+  }
 }
 
 export async function signUpWithGoogleAction() {
@@ -125,8 +125,10 @@ export async function signUpWithGoogleAction() {
   redirect("/verify-email");
 }
 
-export async function loginAction(credentials: unknown) {
+export async function loginAction(credentials: z.infer<typeof loginSchema>) {
   const parsed = loginSchema.safeParse(credentials);
+  const session = await auth.api.getSession({ headers: await headers() });
+  console.log("user??????????????????: ", session?.user);
 
   if (!parsed.success) {
     return {
@@ -150,27 +152,19 @@ export async function loginAction(credentials: unknown) {
     const role =
       roleFromResponse ??
       (await auth.api.getSession({ headers: await headers() }))?.user?.role;
+    console.log("FINAL ROLE IN LOGIN ACTION: ", role);
 
     const redirectUrl = getRedirectUrlByRole(role);
 
     return { success: true as const, redirectTo: redirectUrl };
   } catch (error: unknown) {
-    if (isLoginError(error)) {
-      if (error.body.code === "EMAIL_NOT_VERIFIED") {
-        return {
-          success: false as const,
-          message: "Please verify your email before accessing your account.",
-        };
-      }
-
+    if (error instanceof APIError) {
       return {
         success: false as const,
-        message:
-          error?.body?.message || "Invalid credentials. Please try again.",
+        message: error.message || "Something went wrong. Please try again.",
       };
     }
 
-    // ("loginAction failed", error);
     return {
       success: false as const,
       message: "Something went wrong. Please try again.",
@@ -212,16 +206,16 @@ export async function verifyTotpAction(payload: {
 
     return { success: true as const, redirectTo: redirectUrl };
   } catch (error: unknown) {
-    if (isLoginError(error)) {
+    if (error instanceof APIError) {
       return {
         success: false as const,
-        message: error?.body?.message ?? "Invalid or expired code.",
+        message: error.message || "Something went wrong. Please try again.",
       };
     }
 
     return {
       success: false as const,
-      message: "Unable to verify code. Please try again.",
+      message: "Something went wrong. Please try again.",
     };
   }
 }
@@ -254,12 +248,10 @@ export async function requestPasswordResetAction(
       message: response?.message ?? "Check your email for reset instructions.",
     };
   } catch (error: unknown) {
-    if (isLoginError(error)) {
+    if (error instanceof APIError) {
       return {
         success: false as const,
-        message:
-          error?.body?.message ??
-          "Unable to send reset link. Please try again.",
+        message: error.message || "Something went wrong. Please try again.",
       };
     }
 
@@ -292,20 +284,16 @@ export async function resetPasswordAction(
 
     return { success: true } as const;
   } catch (error: unknown) {
-    // ("resetPasswordAction failed", JSON.stringify(error));
-    if (isLoginError(error)) {
+    if (error instanceof APIError) {
       return {
         success: false as const,
-        message:
-          error?.body?.message ??
-          "Your reset link is invalid or expired. Request a new one to continue.",
+        message: error.message || "Something went wrong. Please try again.",
       };
     }
 
     return {
       success: false as const,
-      message:
-        "Something wrong happened when trying to reset your password. Contact support or try again.",
+      message: "Something went wrong. Please try again.",
     };
   }
 }
