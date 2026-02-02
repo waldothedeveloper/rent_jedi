@@ -140,7 +140,7 @@ const Navbar = ({
     },
   ],
   auth = {
-    login: { title: "Login", url: "/login?role=owner" },
+    login: { title: "Login", url: "/login" },
     signup: {
       title: "Sign up",
       url: "/signup/role",

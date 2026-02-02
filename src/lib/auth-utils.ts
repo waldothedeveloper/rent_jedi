@@ -9,6 +9,7 @@ import { redirect } from "next/navigation";
  * Redirects to root page with error if role is invalid or missing.
  */
 export function getRedirectUrlByRole(role: string | null | undefined): string {
+  console.log("role: ", role);
   if (!isRoleName(role)) {
     console.error(`Invalid or missing role: "${role}".`);
     redirect("/");
@@ -22,18 +23,4 @@ export function getRedirectUrlByRole(role: string | null | undefined): string {
   };
 
   return roleRouteMap[role];
-}
-
-/**
- * Returns redirect URL considering invite flow.
- * Invite token takes precedence over role-based routing.
- */
-export function getPostAuthRedirect(
-  role: string | null | undefined,
-  token?: string | null,
-): string {
-  if (token) {
-    return "/invite/welcome";
-  }
-  return getRedirectUrlByRole(role);
 }

@@ -36,7 +36,11 @@
       "mcp__playwright-test__test_debug",
       "Bash(chmod:*)",
       "Bash(npm run test:cleanup:*)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Bash(xargs cat:*)",
+      "Bash(xargs find:*)",
+      "mcp__better-auth__search-better-auth-docs",
+      "mcp__better-auth__ask-question-about-better-auth"
     ]
   },
   "enableAllProjectMcpServers": true,
