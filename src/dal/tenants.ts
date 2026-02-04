@@ -170,7 +170,7 @@ const verifyUnitOwnershipForTenant = async (
     .select({
       unitId: unit.id,
       propertyId: unit.propertyId,
-      ownerId: property.ownerId,
+      organizationId: property.organizationId,
     })
     .from(unit)
     .innerJoin(property, eq(unit.propertyId, property.id))
@@ -185,7 +185,7 @@ const verifyUnitOwnershipForTenant = async (
     };
   }
 
-  if (unitOwnership.ownerId !== ownerId) {
+  if (unitOwnership.organizationId !== ownerId) {
     return {
       success: false,
       message: notOwnerMessage,
@@ -287,7 +287,7 @@ export const createTenantDraftDAL = async (data: {
           email: data.email || null,
           phone: data.phone || null,
           tenantStatus: "draft",
-          ownerId: session.user.id,
+          organizationId: session.user.id,
         })
         .returning();
 
@@ -344,7 +344,7 @@ export const updateTenantDraftDAL = async (
         return { success: false, message: ERRORS.TENANT_NOT_FOUND };
       }
 
-      if (existingTenant.ownerId !== session.user.id) {
+      if (existingTenant.organizationId !== session.user.id) {
         return {
           success: false,
           message: ERRORS.NOT_TENANT_OWNER,
@@ -430,7 +430,7 @@ export const activateTenantDraftDAL = async (
         return { success: false, message: ERRORS.TENANT_NOT_FOUND };
       }
 
-      if (existingTenant.ownerId !== session.user.id) {
+      if (existingTenant.organizationId !== session.user.id) {
         return {
           success: false,
           message: ERRORS.NOT_TENANT_OWNER,
@@ -524,7 +524,7 @@ export const getTenantByIdDAL = cache(
       }
 
       // Verify ownership for all tenant records (drafts and active)
-      if (result.tenant.ownerId !== session.user.id) {
+      if (result.tenant.organizationId !== session.user.id) {
         return {
           success: false,
           message: ERRORS.NOT_TENANT_OWNER,
@@ -593,7 +593,7 @@ export const updateTenantDAL = async (
       return { success: false, message: ERRORS.TENANT_NOT_FOUND };
     }
 
-    if (existingTenant.ownerId !== session.user.id) {
+    if (existingTenant.organizationId !== session.user.id) {
       return {
         success: false,
         message: ERRORS.NOT_TENANT_OWNER,
@@ -668,7 +668,7 @@ export const listTenantsDAL = cache(
           .from(tenant)
           .leftJoin(unit, eq(tenant.unitId, unit.id)) // LEFT JOIN for drafts without unitId
           .leftJoin(property, eq(unit.propertyId, property.id))
-          .where(eq(tenant.ownerId, session.user.id)) // Filter by owner
+          .where(eq(tenant.organizationId, session.user.id)) // Filter by owner
           .orderBy(desc(tenant.createdAt)), // Most recent first
       ]);
 
@@ -748,7 +748,7 @@ export const archiveTenantDAL = async (
     }
 
     // Ownership verification
-    if (existingTenant.ownerId !== session.user.id) {
+    if (existingTenant.organizationId !== session.user.id) {
       return {
         success: false,
         message: ERRORS.NOT_TENANT_OWNER,

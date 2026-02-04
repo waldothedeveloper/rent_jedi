@@ -1,6 +1,6 @@
 "server only";
 
-import { and, count, eq, isNull, ne, sql } from "drizzle-orm";
+import { and, count, eq, isNull, ne, sql, type SQL } from "drizzle-orm";
 
 import type { Roles } from "@/types/roles";
 import { auth } from "@/lib/auth";
@@ -66,20 +66,24 @@ const ERRORS = {
 
 type PropertyAddressLookup = Pick<
   Property,
-  "ownerId" | "addressLine1" | "city" | "state" | "zipCode" | "country"
+  "organizationId" | "addressLine1" | "city" | "state" | "zipCode" | "country"
 > & {
   excludePropertyId?: string;
 };
 
 const getDuplicatePropertyByAddress = async (input: PropertyAddressLookup) => {
-  const conditions = [
-    eq(property.ownerId, input.ownerId),
+  const conditions: SQL<unknown>[] = [
     eq(property.addressLine1, input.addressLine1),
     eq(property.city, input.city),
     eq(property.state, input.state),
     eq(property.zipCode, input.zipCode),
     eq(property.country, input.country),
   ];
+
+  // Only check organizationId if it's provided
+  if (input.organizationId !== null && input.organizationId !== undefined) {
+    conditions.push(eq(property.organizationId, input.organizationId));
+  }
 
   if (input.excludePropertyId) {
     conditions.push(ne(property.id, input.excludePropertyId));
@@ -218,7 +222,7 @@ export const createPropertyDAL = async (
   }
 
   const duplicateProperty = await getDuplicatePropertyByAddress({
-    ownerId: data.ownerId,
+    organizationId: data.organizationId,
     addressLine1: data.addressLine1,
     city: data.city,
     state: data.state,
@@ -272,7 +276,7 @@ export const listPropertiesDAL = cache(async () => {
       db
         .select({
           id: property.id,
-          ownerId: property.ownerId,
+          organizationId: property.organizationId,
           name: property.name,
           description: property.description,
           propertyStatus: property.propertyStatus,
@@ -297,7 +301,7 @@ export const listPropertiesDAL = cache(async () => {
         })
         .from(property)
         .leftJoin(unit, eq(property.id, unit.propertyId))
-        .where(eq(property.ownerId, session.user.id))
+        .where(eq(property.organizationId, session.user.id))
         .groupBy(property.id),
     ]);
 
@@ -532,7 +536,7 @@ export const updatePropertyDraftDAL = async (
       };
     }
 
-    if (existingProperty.ownerId !== session.user.id) {
+    if (existingProperty.organizationId !== session.user.id) {
       return {
         success: false,
         message: ERRORS.NOT_PROPERTY_OWNER,
@@ -548,7 +552,7 @@ export const updatePropertyDraftDAL = async (
 
     if (hasAddressUpdate) {
       const duplicateProperty = await getDuplicatePropertyByAddress({
-        ownerId: existingProperty.ownerId,
+        organizationId: existingProperty.organizationId,
         addressLine1: data.addressLine1 ?? existingProperty.addressLine1,
         city: data.city ?? existingProperty.city,
         state: data.state ?? existingProperty.state,
@@ -614,7 +618,7 @@ export const getDraftPropertyByOwnerDAL = cache(
       const result = await db
         .select({
           id: property.id,
-          ownerId: property.ownerId,
+          organizationId: property.organizationId,
           name: property.name,
           description: property.description,
           propertyStatus: property.propertyStatus,
@@ -638,7 +642,7 @@ export const getDraftPropertyByOwnerDAL = cache(
         .from(property)
         .leftJoin(unit, eq(property.id, unit.propertyId))
         .where(
-          sql`${property.ownerId} = ${session.user.id} AND ${property.propertyStatus} = 'draft'`,
+          sql`${property.organizationId} = ${session.user.id} AND ${property.propertyStatus} = 'draft'`,
         )
         .groupBy(property.id)
         .limit(1);
@@ -699,7 +703,7 @@ export const getPropertyWithUnitsCountDAL = cache(
         db
           .select({
             id: property.id,
-            ownerId: property.ownerId,
+            organizationId: property.organizationId,
             name: property.name,
             description: property.description,
             propertyStatus: property.propertyStatus,
@@ -744,7 +748,7 @@ export const getPropertyWithUnitsCountDAL = cache(
       const { unitsCount, ...propertyData } = result[0];
 
       // Verify ownership
-      if (propertyData.ownerId !== session.user.id) {
+      if (propertyData.organizationId !== session.user.id) {
         return {
           success: false,
           message: ERRORS.NOT_PROPERTY_OWNER,
@@ -796,7 +800,7 @@ export const updateUnitDAL = async (
         .select({
           unitId: unit.id,
           propertyId: unit.propertyId,
-          ownerId: property.ownerId,
+          organizationId: property.organizationId,
         })
         .from(unit)
         .innerJoin(property, eq(unit.propertyId, property.id))
@@ -819,7 +823,7 @@ export const updateUnitDAL = async (
       };
     }
 
-    if (existingUnit.ownerId !== session.user.id) {
+    if (existingUnit.organizationId !== session.user.id) {
       return {
         success: false,
         message: ERRORS.NOT_UNIT_OWNER,
@@ -888,7 +892,7 @@ export const deletePropertyDAL = async (
       };
     }
 
-    if (existingProperty.ownerId !== session.user.id) {
+    if (existingProperty.organizationId !== session.user.id) {
       return {
         success: false,
         message: ERRORS.NOT_PROPERTY_OWNER,
@@ -947,7 +951,7 @@ export const getPropertiesWithAvailableUnitsDAL = cache(
         })
         .from(property)
         .leftJoin(unit, eq(property.id, unit.propertyId))
-        .where(eq(property.ownerId, session.user.id));
+        .where(eq(property.organizationId, session.user.id));
 
       // Group by property and calculate available units
       const propertyMap = new Map();
@@ -1036,7 +1040,7 @@ export const getAvailableUnitsByPropertyDAL = cache(
         };
       }
 
-      if (propertyRecord.ownerId !== session.user.id) {
+      if (propertyRecord.organizationId !== session.user.id) {
         return {
           success: false,
           message: ERRORS.NOT_PROPERTY_OWNER,

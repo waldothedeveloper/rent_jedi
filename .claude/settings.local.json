@@ -40,7 +40,11 @@
       "Bash(xargs cat:*)",
       "Bash(xargs find:*)",
       "mcp__better-auth__search-better-auth-docs",
-      "mcp__better-auth__ask-question-about-better-auth"
+      "mcp__better-auth__ask-question-about-better-auth",
+      "Bash(npx drizzle-kit push:*)",
+      "Bash(./db-push.exp:*)",
+      "Bash(git restore:*)",
+      "Bash(git fsck:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

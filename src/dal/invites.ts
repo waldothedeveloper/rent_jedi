@@ -241,7 +241,7 @@ export const createInviteDAL = async (data: {
     return { success: false, message: ERRORS.PROPERTY_NOT_FOUND };
   }
 
-  if (propertyRecord.ownerId !== session.user.id) {
+  if (propertyRecord.organizationId !== session.user.id) {
     return { success: false, message: ERRORS.NO_PROPERTY_PERMISSION };
   }
 
@@ -250,7 +250,7 @@ export const createInviteDAL = async (data: {
     return { success: false, message: ERRORS.TENANT_NOT_FOUND };
   }
 
-  if (tenantRecord.ownerId !== session.user.id) {
+  if (tenantRecord.organizationId !== session.user.id) {
     return { success: false, message: ERRORS.NO_TENANT_PERMISSION };
   }
 
@@ -278,7 +278,7 @@ export const createInviteDAL = async (data: {
     const updatedInvite = await db
       .update(invite)
       .set({
-        ownerId: session.user.id,
+        organizationId: session.user.id,
         tenantId: data.tenantId,
         inviteeEmail: normalizedInviteeEmail,
         inviteeName: data.inviteeName,
@@ -305,7 +305,7 @@ export const createInviteDAL = async (data: {
     .insert(invite)
     .values({
       propertyId: data.propertyId,
-      ownerId: session.user.id,
+      organizationId: session.user.id,
       tenantId: data.tenantId,
       inviteeEmail: normalizedInviteeEmail,
       inviteeName: data.inviteeName,
@@ -360,7 +360,7 @@ export const getInviteByIdDAL = cache(
       return { success: false, message: ERRORS.INVITE_NOT_FOUND };
     }
 
-    if (result.invite.ownerId !== session.user.id) {
+    if (result.invite.organizationId !== session.user.id) {
       return { success: false, message: ERRORS.NO_VIEW_THIS_INVITE };
     }
 
@@ -465,7 +465,7 @@ export const listInvitesByOwnerDAL = cache(async () => {
       .from(invite)
       .leftJoin(property, eq(invite.propertyId, property.id))
       .leftJoin(tenant, eq(invite.tenantId, tenant.id))
-      .where(eq(invite.ownerId, session.user.id))
+      .where(eq(invite.organizationId, session.user.id))
       .orderBy(desc(invite.createdAt)),
   ]);
 
@@ -503,7 +503,7 @@ export const updateInviteStatusDAL = async (
   }
 
   // Verify ownership (unless accepting - which would be done by the invitee)
-  if (status !== "accepted" && inviteRecord.ownerId !== session.user.id) {
+  if (status !== "accepted" && inviteRecord.organizationId !== session.user.id) {
     return { success: false, message: ERRORS.NO_UPDATE_THIS_INVITE };
   }
 
@@ -573,7 +573,7 @@ export const getInviteByTenantIdDAL = cache(
     }
 
     // Verify ownership
-    if (result.invite.ownerId !== session.user.id) {
+    if (result.invite.organizationId !== session.user.id) {
       return { success: false, message: ERRORS.NO_VIEW_THIS_INVITE };
     }
 

@@ -13,7 +13,7 @@ import { relations, sql } from "drizzle-orm";
 import { EMAILREGEX } from "@/lib/utils";
 import { property } from "./properties-schema";
 import { tenant } from "./tenants-schema";
-import { user } from "./auth-schema";
+import { organization, user } from "./auth-schema";
 
 export const inviteStatusEnum = pgEnum("invite_status", [
   "pending",
@@ -32,9 +32,8 @@ export const invite = pgTable(
     propertyId: uuid("property_id")
       .notNull()
       .references(() => property.id, { onDelete: "cascade" }),
-    ownerId: text("owner_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "restrict" }),
+    organizationId: text("organization_id")
+      .references(() => organization.id, { onDelete: "restrict" }),
     managerId: text("manager_id").references(() => user.id, {
       onDelete: "set null",
     }),
@@ -57,7 +56,7 @@ export const invite = pgTable(
   },
   (table) => [
     index("invite_property_id_idx").on(table.propertyId),
-    index("invite_owner_id_idx").on(table.ownerId),
+    index("invite_organization_id_idx").on(table.organizationId),
     index("invite_manager_id_idx").on(table.managerId),
     index("invite_tenant_id_idx").on(table.tenantId),
     index("invite_status_idx").on(table.status),
@@ -77,9 +76,9 @@ export const inviteRelations = relations(invite, ({ one }) => ({
     fields: [invite.propertyId],
     references: [property.id],
   }),
-  owner: one(user, {
-    fields: [invite.ownerId],
-    references: [user.id],
+  organization: one(organization, {
+    fields: [invite.organizationId],
+    references: [organization.id],
   }),
   manager: one(user, {
     fields: [invite.managerId],
