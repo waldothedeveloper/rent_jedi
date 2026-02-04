@@ -11,7 +11,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 
-import { user } from "./auth-schema";
+import { organization, user } from "./auth-schema";
 import { unit } from "./units-schema";
 
 export const tenantStatusEnum = pgEnum("tenant_status", [
@@ -26,9 +26,9 @@ export const tenant = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     unitId: uuid("unit_id").references(() => unit.id, { onDelete: "cascade" }),
-    ownerId: text("owner_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "restrict" }),
+    organizationId: text("organization_id").references(() => organization.id, {
+      onDelete: "restrict",
+    }),
     userId: text("user_id").references(() => user.id, {
       onDelete: "set null",
     }),
@@ -46,7 +46,7 @@ export const tenant = pgTable(
   },
   (table) => [
     index("tenant_unit_id_idx").on(table.unitId),
-    index("tenant_owner_id_idx").on(table.ownerId),
+    index("tenant_organization_id_idx").on(table.organizationId),
     index("tenant_user_id_idx").on(table.userId),
     uniqueIndex("tenant_unit_active_uid")
       .on(table.unitId)
@@ -76,5 +76,9 @@ export const tenantRelations = relations(tenant, ({ one }) => ({
   unit: one(unit, {
     fields: [tenant.unitId],
     references: [unit.id],
+  }),
+  organization: one(organization, {
+    fields: [tenant.organizationId],
+    references: [organization.id],
   }),
 }));

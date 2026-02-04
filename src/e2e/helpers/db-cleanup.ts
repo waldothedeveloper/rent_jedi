@@ -44,7 +44,7 @@ export async function cleanupIncompleteProperties(ownerId?: string) {
       .where(
         and(
           isNull(unit.id),
-          ownerId ? eq(property.ownerId, ownerId) : sql`1=1`
+          ownerId ? eq(property.organizationId, ownerId) : sql`1=1`
         )
       );
 
@@ -72,7 +72,7 @@ export async function cleanupIncompleteProperties(ownerId?: string) {
       .where(
         and(
           or(...whereConditions),
-          ownerId ? eq(property.ownerId, ownerId) : sql`1=1`
+          ownerId ? eq(property.organizationId, ownerId) : sql`1=1`
         )
       );
 
@@ -95,7 +95,7 @@ export async function cleanupOwnerTestData(ownerId: string) {
     console.log(`🧹 Cleaning up test data for owner: ${ownerId}`);
 
     // Delete all properties for the test owner
-    await getDb().delete(property).where(eq(property.ownerId, ownerId));
+    await getDb().delete(property).where(eq(property.organizationId, ownerId));
 
     console.log("✅ Owner test data cleanup completed");
   } catch (error) {
@@ -116,7 +116,7 @@ export async function getIncompletePropertyCount(ownerId?: string) {
       .where(
         and(
           isNull(unit.id),
-          ownerId ? eq(property.ownerId, ownerId) : sql`1=1`
+          ownerId ? eq(property.organizationId, ownerId) : sql`1=1`
         )
       );
 

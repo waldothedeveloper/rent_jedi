@@ -1,9 +1,13 @@
 import {
-  accessControl,
-  admin,
-  manager,
-  owner,
-  tenant,
+  globalAC,
+  platformAdmin,
+  globalOwner,
+  globalManager,
+  globalTenant,
+  organizationAC,
+  orgOwner,
+  orgManager,
+  orgTenant,
 } from "@/lib/permissions";
 import {
   account,
@@ -14,6 +18,7 @@ import {
 } from "@/db/schema/auth-schema";
 import {
   admin as adminPlugin,
+  organization as organizationPlugin,
   twoFactor as twoFactorPlugin,
 } from "better-auth/plugins";
 
@@ -21,8 +26,6 @@ import type { User } from "better-auth";
 import { betterAuth } from "better-auth";
 import { db } from "@/db/drizzle";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { eq } from "drizzle-orm";
-import { invite } from "@/db/schema/invites-schema";
 import { nextCookies } from "better-auth/next-js";
 import { property } from "@/db/schema/properties-schema";
 
@@ -44,14 +47,24 @@ export const auth = betterAuth({
   },
   trustedOrigins: ["http://localhost:3000", "https://bloomrent.com"],
   plugins: [
+    organizationPlugin({
+      ac: organizationAC,
+      roles: {
+        owner: orgOwner,
+        manager: orgManager,
+        tenant: orgTenant,
+      },
+      creatorRole: "owner",
+    }),
     twoFactorPlugin(),
     adminPlugin({
-      ac: accessControl,
+      ac: globalAC,
       roles: {
-        admin,
-        owner,
-        tenant,
-        manager,
+        admin: platformAdmin,
+        // TEMPORARY: Keep global versions during migration
+        owner: globalOwner,
+        manager: globalManager,
+        tenant: globalTenant,
       },
     }),
     nextCookies(),
@@ -109,85 +122,6 @@ export const auth = betterAuth({
       });
     },
   },
-
-  databaseHooks: {
-    user: {
-      create: {
-        before: async (user) => {
-          // Sanitize role - only allow owner/tenant, never admin
-          const safeRole =
-            user.role === "owner" || user.role === "tenant"
-              ? user.role
-              : "owner";
-
-          // Check for pending tenant invite
-          if (user.email) {
-            const pendingInvite = await db
-              .select()
-              .from(invite)
-              .where(eq(invite.inviteeEmail, user.email.toLowerCase()))
-              .limit(1)
-              .then((rows) => rows[0]);
-
-            if (
-              pendingInvite &&
-              pendingInvite.status === "pending" &&
-              pendingInvite.role === "tenant"
-            ) {
-              return {
-                data: { ...user, role: "tenant" },
-              };
-            }
-          }
-
-          return {
-            data: { ...user, role: safeRole },
-          };
-        },
-      },
-    },
-  },
-
-  // databaseHooks: {
-  //   user: {
-  //     create: {
-  //       before: async (user) => {
-  //         // Check for pending tenant invite
-  //         if (user.email) {
-  //           console.log(
-  //             "auth databaseHooks: Checking for pending invites for new user:",
-  //             user.email,
-  //           );
-  //           const pendingInvite = await db
-  //             .select()
-  //             .from(invite)
-  //             .where(eq(invite.inviteeEmail, user.email.toLowerCase()))
-  //             .limit(1)
-  //             .then((rows) => rows[0]);
-
-  //           if (
-  //             pendingInvite &&
-  //             pendingInvite.status === "pending" &&
-  //             pendingInvite.role === "tenant"
-  //           ) {
-  //             return {
-  //               data: {
-  //                 ...user,
-  //                 role: "tenant",
-  //               },
-  //             };
-  //           }
-  //         }
-
-  //         return {
-  //           data: {
-  //             ...user,
-  //           },
-  //         };
-  //       },
-  //     },
-  //   },
-  // },
 
   database: drizzleAdapter(db, {
     provider: "pg",
