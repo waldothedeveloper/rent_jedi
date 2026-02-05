@@ -1,19 +1,45 @@
-import { auth } from "@/lib/auth";
-import { getRedirectUrlByRole } from "@/lib/auth-utils";
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+"use client";
 
-export default async function AuthSuccessPage() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { authClient } from "@/lib/auth-client";
+import { getRedirectUrlByRole, getRedirectUrlByIntent } from "@/lib/auth-utils-client";
 
-  if (!session?.user) {
-    redirect("/");
-  }
+export default function AuthSuccessPage() {
+  const router = useRouter();
 
-  const role = session.user.role;
-  console.log("role passed to getRedirectUrlByRole: ", role);
-  const redirectUrl = getRedirectUrlByRole(role);
-  redirect(redirectUrl);
+  useEffect(() => {
+    async function handleRedirect() {
+      const { data: session } = await authClient.getSession();
+
+      if (!session?.user) {
+        router.push("/");
+        return;
+      }
+
+      // Check for signup intent from sessionStorage
+      const intent = sessionStorage.getItem("signup_intent");
+
+      if (intent) {
+        // Clear intent after reading
+        sessionStorage.removeItem("signup_intent");
+
+        // Redirect based on intent
+        const redirectUrl = getRedirectUrlByIntent(intent);
+        router.push(redirectUrl);
+      } else {
+        // No intent (existing user login via OAuth), use role-based redirect
+        const redirectUrl = getRedirectUrlByRole(session.user.role);
+        router.push(redirectUrl);
+      }
+    }
+
+    handleRedirect();
+  }, [router]);
+
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <p>Redirecting...</p>
+    </div>
+  );
 }

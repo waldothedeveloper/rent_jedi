@@ -81,7 +81,7 @@ export async function signUpAction(credentials: z.infer<typeof signUpSchema>) {
   if (!result.success) {
     return result.error;
   }
-  const { name, email, password, role } = result.data;
+  const { name, email, password } = result.data;
 
   try {
     const data = await auth.api.signUpEmail({
