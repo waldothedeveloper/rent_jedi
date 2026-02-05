@@ -32,8 +32,8 @@ export default async function RentalMarketplacePage() {
         <div className="absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-primary/5 blur-[140px]" />
       </div>
 
-      <main className="relative z-10 mx-auto flex w-full max-w-6xl flex-col gap-20 px-6 py-16 lg:px-10">
-        <section className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr]">
+      <main className="relative z-10 mx-auto flex w-full max-w-7xl flex-col gap-20 px-6 py-16 sm:px-8 lg:px-12 xl:gap-24 xl:px-16 2xl:gap-28 2xl:px-20">
+        <section className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr] xl:gap-16 2xl:gap-20">
           <div className="space-y-8">
             <div className="flex items-center gap-3 text-sm uppercase tracking-[0.35em] text-muted-foreground">
               <Separator orientation="horizontal" className="max-w-12" />
@@ -169,7 +169,7 @@ export default async function RentalMarketplacePage() {
           </div>
         </section>
 
-        <section className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr]">
+        <section className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] xl:gap-16 2xl:gap-20">
           <div className="space-y-6">
             <p className="text-sm uppercase tracking-[0.35em] text-muted-foreground">
               Why renters stay
