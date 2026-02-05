@@ -29,27 +29,23 @@ import { useRouter } from "next/navigation";
 
 interface SignupFormProps extends React.ComponentProps<"div"> {
   token?: string;
-  role?: string;
+  intent?: string;
 }
 
 export function SignupForm({
   token,
-  role,
+  intent,
   className,
   ...props
 }: SignupFormProps) {
   const router = useRouter();
 
-  const isTenant = role === "tenant";
-  const title = isTenant
-    ? "Set Up Your Tenant Account"
-    : "Set Up your Landlord Account";
+  const isTenant = intent === "tenant";
+  const title = "Create Your Account";
   const description = isTenant
-    ? "Complete your registration to access your rental dashboard, or find your next home."
-    : "Join Bloom Rent to manage your properties efficiently and connect with tenants.";
-  const submitButtonText = isTenant
-    ? "Create Tenant Account"
-    : "Create Landlord Account";
+    ? "Find your next home and manage everything in one place"
+    : "Start managing your properties efficiently";
+  const submitButtonText = "Create Account";
 
   const form = useForm({
     defaultValues: {
@@ -219,9 +215,9 @@ export function SignupForm({
                   variant="outline"
                   type="button"
                   onClick={async () => {
-                    // Store role in sessionStorage before OAuth
-                    if (role) {
-                      sessionStorage.setItem("signup_role", role);
+                    // Store intent in sessionStorage before OAuth
+                    if (intent) {
+                      sessionStorage.setItem("signup_intent", intent);
                     }
 
                     await authClient.signIn.social({
