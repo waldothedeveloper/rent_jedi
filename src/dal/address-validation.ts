@@ -12,7 +12,7 @@ import { verifySessionDAL } from "@/dal/properties";
 
 /**
  * Validates an address using Google Maps Address Validation API
- * @requires Authentication (owner or admin role)
+ * @requires Authentication (any authenticated user)
  * @param address - The address to validate
  * @returns Validation result with both user and Google addresses
  */
@@ -32,14 +32,6 @@ export const validateAddressWithGoogleDAL = cache(
         success: false,
         message:
           "⛔️ Access Denied. You must be signed in to validate addresses.",
-      };
-    }
-
-    if (session.user.role !== "owner" && session.user.role !== "admin") {
-      return {
-        success: false,
-        message:
-          "⛔️ Access Denied. Only property owners can validate addresses.",
       };
     }
 

@@ -1,13 +1,9 @@
 import {
   globalAC,
   platformAdmin,
-  globalOwner,
-  globalManager,
-  globalTenant,
   organizationAC,
   orgOwner,
   orgManager,
-  orgTenant,
 } from "@/lib/permissions";
 import {
   adminClient,
@@ -24,17 +20,12 @@ export const authClient = createAuthClient({
       roles: {
         owner: orgOwner,
         manager: orgManager,
-        tenant: orgTenant,
       },
     }),
     adminClient({
       ac: globalAC,
       roles: {
         admin: platformAdmin,
-        // TEMPORARY: Keep global versions during migration
-        owner: globalOwner,
-        manager: globalManager,
-        tenant: globalTenant,
       },
     }),
     twoFactorClient(),

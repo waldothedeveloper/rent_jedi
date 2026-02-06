@@ -15,12 +15,7 @@ import {
   FieldLabel,
   FieldSeparator,
 } from "@/components/ui/field";
-import {
-  acceptTenantInviteWithLogin,
-  validateInviteToken,
-} from "@/app/actions/invites";
 import { revalidateLogic, useForm } from "@tanstack/react-form";
-import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,31 +27,16 @@ import { loginSchema } from "@/lib/shared-auth-schema";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
-interface LoginFormProps extends React.ComponentProps<"div"> {
-  token?: string;
-  role?: string;
-}
-
 export function LoginForm({
-  token,
-  role,
   className,
   ...props
-}: LoginFormProps) {
+}: React.ComponentProps<"div">) {
   const router = useRouter();
-  const [inviteEmail, setInviteEmail] = useState<string | null>(null);
 
-  // Dynamic messaging based on role
-  const isTenant = role === "tenant";
-  const title = isTenant
-    ? "Sign in to Accept Invitation"
-    : "Login to your Account";
-  const description = isTenant
-    ? "Use your existing Bloom Rent credentials to accept this invitation"
-    : "The sun is up and the soil is waiting. Step back in to see what's growing.";
-  const submitButtonText = isTenant
-    ? "Sign In & Accept"
-    : "Login to Bloom Rent";
+  const title = "Login to your Account";
+  const description =
+    "The sun is up and the soil is waiting. Step back in to see what's growing.";
+  const submitButtonText = "Login to Bloom Rent";
 
   const form = useForm({
     defaultValues: {
@@ -72,36 +52,18 @@ export function LoginForm({
       onDynamic: loginSchema,
     },
     onSubmit: async ({ value, formApi }) => {
-      const res = token
-        ? await acceptTenantInviteWithLogin({ ...value, token })
-        : await loginAction(value);
+      const res = await loginAction(value);
 
       if (!res?.success) {
         return toast.error(res?.message ?? "Login failed. Try again.");
       }
 
-      const redirectTo = token
-        ? "/invite/welcome"
-        : ((res as any).redirectTo ?? "/owners/dashboard");
+      const redirectTo = (res as any).redirectTo ?? "/owners/dashboard";
       router.push(redirectTo);
       router.refresh();
       formApi.reset();
     },
   });
-
-  // Validate token on mount and pre-populate email (acceptable useEffect use - initial data load)
-  useEffect(() => {
-    if (token) {
-      validateInviteToken(token).then((result) => {
-        if (result.success && result.data) {
-          const email = result.data.inviteeEmail;
-          setInviteEmail(email);
-          // Update form value
-          form.setFieldValue("email", email);
-        }
-      });
-    }
-  }, [token, form]);
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
@@ -144,32 +106,23 @@ export function LoginForm({
               </FieldSeparator>
               <form.Field
                 name="email"
-                children={(field) => {
-                  const emailValue = inviteEmail || field.state.value || "";
-
-                  return (
-                    <Field>
-                      <FieldLabel htmlFor={field.name}>Email</FieldLabel>
-                      <Input
-                        autoComplete="email"
-                        id={field.name}
-                        type="email"
-                        placeholder="m@example.com"
-                        value={emailValue}
-                        onBlur={field.handleBlur}
-                        onChange={(event) =>
-                          field.handleChange(event.target.value)
-                        }
-                      />
-                      {inviteEmail && (
-                        <FieldDescription>
-                          This invitation is for {inviteEmail}
-                        </FieldDescription>
-                      )}
-                      <FieldError errors={field.state.meta.errors} />
-                    </Field>
-                  );
-                }}
+                children={(field) => (
+                  <Field>
+                    <FieldLabel htmlFor={field.name}>Email</FieldLabel>
+                    <Input
+                      autoComplete="email"
+                      id={field.name}
+                      type="email"
+                      placeholder="m@example.com"
+                      value={field.state.value ?? ""}
+                      onBlur={field.handleBlur}
+                      onChange={(event) =>
+                        field.handleChange(event.target.value)
+                      }
+                    />
+                    <FieldError errors={field.state.meta.errors} />
+                  </Field>
+                )}
               />
               <form.Field
                 name="password"

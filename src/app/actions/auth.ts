@@ -43,6 +43,29 @@ export async function getSessionOrRedirect() {
   return session;
 }
 
+export async function getOrgSessionOrRedirect(options?: {
+  requireOrg?: boolean;
+}) {
+  const session = await auth.api.getSession({ headers: await headers() });
+
+  if (!session) {
+    redirect("/login");
+  }
+
+  const activeOrgId = session.session.activeOrganizationId;
+
+  // If organization required but not set, redirect to dashboard
+  if (options?.requireOrg && !activeOrgId) {
+    redirect("/owners/dashboard?needsOrganization=true");
+  }
+
+  return {
+    session: session.session,
+    user: session.user,
+    organizationId: activeOrgId,
+  };
+}
+
 export async function resendVerificationEmailAction() {
   const headersList = await headers();
 

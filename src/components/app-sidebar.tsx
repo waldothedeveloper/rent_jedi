@@ -6,7 +6,6 @@ import {
   DollarSign,
   House,
   MessageCircleMore,
-  Users,
   Wrench,
 } from "lucide-react";
 import {
@@ -32,11 +31,6 @@ const data = {
       url: "/owners/properties",
       icon: House,
       isActive: true,
-    },
-    {
-      title: "Tenants",
-      url: "/owners/tenants",
-      icon: Users,
     },
     {
       title: "Payments",

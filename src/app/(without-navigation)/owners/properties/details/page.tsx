@@ -1,28 +1,12 @@
-import { MultiUnitDetails } from "./multi-unit-details";
-import { SingleUnitDetails } from "./single-unit-details";
-import { getPropertyByIdDAL } from "@/dal/properties";
-
-export default async function PropertyDetailsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-}) {
-  const { id } = await searchParams;
-  const { success, data, message } = await getPropertyByIdDAL(id as string);
-
-  if (!success || !data) {
-    throw new Error(message || "Property not found.");
-    // return (
-    //   <div className="text-center text-destructive">
-    //     Error: {message || "Property not found."}
-    //   </div>
-    // );
-  }
-
-  // Conditional rendering based on unit type
-  return data.unitType === "multi_unit" ? (
-    <MultiUnitDetails property={data} />
-  ) : (
-    <SingleUnitDetails property={data} />
+export default async function PropertyDetailsPage() {
+  return (
+    <div className="flex flex-col items-center justify-center gap-6 p-6 md:p-10 mt-12">
+      <div className="text-center">
+        <p className="text-lg font-semibold">Property Details</p>
+        <p className="text-muted-foreground">
+          Property details are being rebuilt. Please check back soon.
+        </p>
+      </div>
+    </div>
   );
 }
