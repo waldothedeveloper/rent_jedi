@@ -19,27 +19,21 @@ import { revalidateLogic, useForm } from "@tanstack/react-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
-import { acceptTenantInviteWithSignup } from "@/app/actions/invites";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { signUpAction } from "@/app/actions/auth";
 import { signUpSchema } from "@/lib/shared-auth-schema";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
 
 interface SignupFormProps extends React.ComponentProps<"div"> {
-  token?: string;
   intent?: string;
 }
 
 export function SignupForm({
-  token,
   intent,
   className,
   ...props
 }: SignupFormProps) {
-  const router = useRouter();
-
   const isTenant = intent === "tenant";
   const title = "Create Your Account";
   const description = isTenant
@@ -64,24 +58,9 @@ export function SignupForm({
     },
     onSubmit: async ({ value, formApi }) => {
       try {
-        if (token) {
-          const result = await acceptTenantInviteWithSignup({
-            ...value,
-            token,
-          });
-
-          if (!result.success) {
-            toast.error(result.message || "Failed to create account");
-            return;
-          }
-
-          toast.success("Account created successfully!");
-          router.push("/invite/welcome");
-        } else {
-          await signUpAction(value);
-          toast.success("Account created! Please check your email.");
-          formApi.reset();
-        }
+        await signUpAction(value);
+        toast.success("Account created! Please check your email.");
+        formApi.reset();
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Something went wrong";

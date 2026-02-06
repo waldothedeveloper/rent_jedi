@@ -31,7 +31,6 @@ export function getRedirectUrlByRole(role: string | null | undefined): string {
     // Org roles
     owner: "/owners/dashboard",
     manager: "/owners/dashboard",
-    tenant: "/tenants/dashboard",
   };
 
   return roleRouteMap[role as RoutableRole];

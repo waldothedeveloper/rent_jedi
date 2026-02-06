@@ -1,16 +1,15 @@
 import {
   globalAC,
   platformAdmin,
-  globalOwner,
-  globalManager,
-  globalTenant,
   organizationAC,
   orgOwner,
   orgManager,
-  orgTenant,
 } from "@/lib/permissions";
 import {
   account,
+  invitation,
+  member,
+  organization,
   session,
   twoFactor as twoFactorTable,
   user,
@@ -52,7 +51,6 @@ export const auth = betterAuth({
       roles: {
         owner: orgOwner,
         manager: orgManager,
-        tenant: orgTenant,
       },
       creatorRole: "owner",
     }),
@@ -61,10 +59,6 @@ export const auth = betterAuth({
       ac: globalAC,
       roles: {
         admin: platformAdmin,
-        // TEMPORARY: Keep global versions during migration
-        owner: globalOwner,
-        manager: globalManager,
-        tenant: globalTenant,
       },
     }),
     nextCookies(),
@@ -131,6 +125,9 @@ export const auth = betterAuth({
       account,
       verification,
       twoFactor: twoFactorTable,
+      organization,
+      member,
+      invitation,
       property,
     },
   }),

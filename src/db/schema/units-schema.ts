@@ -12,6 +12,7 @@ import {
 import { relations, sql } from "drizzle-orm";
 
 import { property } from "./properties-schema";
+import { organization } from "./auth-schema";
 
 export const unit = pgTable(
   "unit",
@@ -20,6 +21,9 @@ export const unit = pgTable(
     propertyId: uuid("property_id")
       .notNull()
       .references(() => property.id, { onDelete: "cascade" }),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "restrict" }),
     unitNumber: text("unit_number").notNull(),
     bedrooms: integer("bedrooms").notNull().default(0),
     bathrooms: numeric("bathrooms", { precision: 3, scale: 1 }).notNull(),
@@ -36,6 +40,7 @@ export const unit = pgTable(
   },
   (table) => [
     index("unit_property_id_idx").on(table.propertyId),
+    index("unit_organization_id_idx").on(table.organizationId),
     uniqueIndex("unit_property_unit_number_uid").on(
       table.propertyId,
       table.unitNumber

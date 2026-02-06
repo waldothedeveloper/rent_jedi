@@ -15,7 +15,6 @@ export function getRedirectUrlByRole(role: string | null | undefined): string {
     user: "/owners/dashboard",
     owner: "/owners/dashboard",
     manager: "/owners/dashboard",
-    tenant: "/tenants/dashboard",
   };
 
   return roleRouteMap[role] || "/";

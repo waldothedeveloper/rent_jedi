@@ -44,11 +44,17 @@
       "Bash(npx drizzle-kit push:*)",
       "Bash(./db-push.exp:*)",
       "Bash(git restore:*)",
-      "Bash(git fsck:*)"
+      "Bash(git fsck:*)",
+      "WebFetch(domain:registry.npmjs.org)",
+      "WebFetch(domain:fonts.googleapis.com)"
     ]
   },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "playwright-test"
-  ]
+  ],
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true
+  }
 }

@@ -62,28 +62,3 @@ export const totpSchema = z.object({
   trustDevice: z.boolean(),
 });
 
-// TENANT INVITE ACCEPTANCE SCHEMAS
-export const tenantInviteSignupSchema = z
-  .object({
-    token: z.string().min(1, "Invitation token is required."),
-    name: z
-      .string()
-      .min(2, "Name must be at least 2 characters.")
-      .max(50, "Name must be at most 50 characters."),
-    email: z.email("Please enter a valid email."),
-    password: signUpPasswordSchema,
-    confirmPassword: z.string(),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    path: ["confirmPassword"],
-    message: "Passwords must match.",
-  });
-
-export const tenantInviteLoginSchema = z.object({
-  token: z.string().min(1, "Invitation token is required."),
-  email: z.email("Please enter a valid email."),
-  password: z
-    .string()
-    .min(12, "Password must be at least 12 characters.")
-    .max(128, "Password must be at most 128 characters."),
-});

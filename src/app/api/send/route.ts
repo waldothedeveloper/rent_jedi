@@ -1,9 +1,6 @@
 import { EmailVerification } from "@/components/email-templates/email_verification";
 import { PasswordReset } from "@/components/email-templates/password_reset";
 import { PasswordResetConfirmation } from "@/components/email-templates/password_reset_confirmation";
-import { TenantInvitation } from "@/components/email-templates/tenant_invitation";
-import { TenantInviteAccepted } from "@/components/email-templates/tenant_invite_accepted";
-import { TenantInviteAcceptedLandlord } from "@/components/email-templates/tenant_invite_accepted_landlord";
 import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -18,13 +15,6 @@ export async function POST(request: Request) {
       resetUrl,
       verificationUrl,
       template,
-      inviteUrl,
-      propertyName,
-      propertyAddress,
-      unitNumber,
-      ownerName,
-      tenantName,
-      acceptedAt,
     } = body;
 
     if (!to || !subject || !template) {
@@ -61,39 +51,6 @@ export async function POST(request: Request) {
           return EmailVerification({
             firstName: firstName ?? "there",
             verificationUrl,
-          });
-        }
-        case "tenant-invitation": {
-          if (!inviteUrl) {
-            throw new Error(
-              "inviteUrl is required for tenant invitation emails"
-            );
-          }
-
-          return TenantInvitation({
-            inviteeName: firstName ?? "there",
-            propertyName,
-            propertyAddress,
-            unitNumber,
-            ownerName,
-            inviteUrl,
-            expiresInDays: 14,
-          });
-        }
-        case "tenant-invite-accepted": {
-          return TenantInviteAccepted({
-            firstName: firstName ?? "there",
-            propertyName,
-            propertyAddress,
-            unitNumber,
-          });
-        }
-        case "tenant-invite-accepted-landlord": {
-          return TenantInviteAcceptedLandlord({
-            tenantName: tenantName ?? "Your tenant",
-            propertyName,
-            unitNumber,
-            acceptedAt,
           });
         }
         default: {

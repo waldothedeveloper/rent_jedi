@@ -119,9 +119,11 @@ export const property = pgTable(
   "property",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    organizationId: text("organization_id").references(() => organization.id, {
-      onDelete: "restrict",
-    }),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, {
+        onDelete: "restrict",
+      }),
     name: text("name"),
     description: text("description"),
     propertyStatus: propertyStatusEnum("property_status")
@@ -148,16 +150,14 @@ export const property = pgTable(
   },
   (table) => [
     index("property_organization_id_idx").on(table.organizationId),
-    uniqueIndex("property_org_address_uid")
-      .on(
-        table.organizationId,
-        table.addressLine1,
-        table.city,
-        table.state,
-        table.zipCode,
-        table.country
-      )
-      .where(sql`${table.organizationId} IS NOT NULL`),
+    uniqueIndex("property_org_address_uid").on(
+      table.organizationId,
+      table.addressLine1,
+      table.city,
+      table.state,
+      table.zipCode,
+      table.country
+    ),
     check(
       "contact_email_valid",
       sql`${table.contactEmail} IS NULL OR ${table.contactEmail} ~ ${sql.raw(
