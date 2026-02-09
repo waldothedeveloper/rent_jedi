@@ -3,33 +3,52 @@
  * These functions can be imported and used in client components.
  */
 
+import {
+  type GlobalRole,
+  isGlobalRole,
+  isOrgRole,
+  type OrgRole,
+} from "@/lib/permissions";
+
+/** New signups land on onboarding-oriented pages. */
+const intentRouteMap: Record<OrgRole, string> = {
+  owner: "/owners/properties",
+  tenant: "/rental-marketplace",
+};
+
+/** Returning users with an org role go to their dashboard. */
+const orgRoleRouteMap: Record<OrgRole, string> = {
+  owner: "/owners/dashboard",
+  tenant: "/rental-marketplace",
+};
+
+/** Global-only roles (admin, default user). */
+const globalRoleRouteMap: Record<GlobalRole, string> = {
+  admin: "/admin/dashboard",
+  user: "/select-role",
+};
+
 /**
- * Returns the dashboard URL for a given user role (client-side version).
- * Returns "/" if role is invalid or missing.
- */
-export function getRedirectUrlByRole(role: string | null | undefined): string {
-  if (!role) return "/";
-
-  const roleRouteMap: Record<string, string> = {
-    admin: "/admin/dashboard",
-    user: "/owners/dashboard",
-    owner: "/owners/dashboard",
-    manager: "/owners/dashboard",
-  };
-
-  return roleRouteMap[role] || "/";
-}
-
-/**
- * Returns the redirect URL based on user's signup intent.
- * Used for new user onboarding to route based on their stated goal
- * rather than their assigned role.
+ * Returns the redirect URL based on intent (new signups) or role (returning users).
+ * Intent takes precedence when present.
  *
- * @param intent - The signup intent ("owner" or "tenant")
- * @returns The URL to redirect to based on intent
+ * Routing priority: intent → org role → global role → fallback.
  */
-export function getRedirectUrlByIntent(intent: string | null | undefined): string {
-  if (intent === "tenant") return "/rental-marketplace";
-  if (intent === "owner") return "/owners/properties";
-  return "/"; // Fallback to landing page
+export function getRedirectUrl({
+  role,
+  intent,
+}: {
+  role: string | null | undefined;
+  intent?: string | null;
+}): string {
+  // New signups: intent takes precedence
+  if (isOrgRole(intent)) return intentRouteMap[intent];
+
+  // Returning users: org role covers 99% of cases
+  if (isOrgRole(role)) return orgRoleRouteMap[role];
+
+  // Global admin or default user
+  if (isGlobalRole(role)) return globalRoleRouteMap[role];
+
+  return "/select-role"; // fallback for users without a role (e.g. Google OAuth users without org role)
 }

@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
-import { getRedirectUrlByRole, getRedirectUrlByIntent } from "@/lib/auth-utils-client";
+import { getRedirectUrl } from "@/lib/auth-utils-client";
 
 export default function AuthSuccessPage() {
   const router = useRouter();
@@ -17,21 +17,11 @@ export default function AuthSuccessPage() {
         return;
       }
 
-      // Check for signup intent from sessionStorage
       const intent = sessionStorage.getItem("signup_intent");
+      if (intent) sessionStorage.removeItem("signup_intent");
 
-      if (intent) {
-        // Clear intent after reading
-        sessionStorage.removeItem("signup_intent");
-
-        // Redirect based on intent
-        const redirectUrl = getRedirectUrlByIntent(intent);
-        router.push(redirectUrl);
-      } else {
-        // No intent (existing user login via OAuth), use role-based redirect
-        const redirectUrl = getRedirectUrlByRole(session.user.role);
-        router.push(redirectUrl);
-      }
+      const redirectUrl = getRedirectUrl({ role: session.user.role, intent });
+      router.push(redirectUrl);
     }
 
     handleRedirect();

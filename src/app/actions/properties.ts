@@ -13,14 +13,6 @@ const unitInputSchema = z.object({
   securityDepositAmount: z.preprocess((val) => val ?? "", z.string().trim()),
 });
 
-const createUnitsInputSchema = z.object({
-  propertyId: z.uuid(),
-  units: z.array(unitInputSchema).min(1),
-});
-
-export type CreatePropertyInput = z.input<typeof propertyFormSchema>;
-export type CreateUnitsInput = z.infer<typeof createUnitsInputSchema>;
-
 const convertBedrooms = (value: string): number => {
   if (value === "studio") return 0;
   if (value === "12+") return 12;
@@ -189,18 +181,6 @@ export type CompleteMultiUnitInput = z.infer<typeof completeMultiUnitSchema>;
 const NOT_IMPLEMENTED =
   "Property actions are being rebuilt. Please try again later.";
 
-export const createProperty = async (_input: CreatePropertyInput) => {
-  return { success: false as const, message: NOT_IMPLEMENTED };
-};
-
-export const listProperties = async () => {
-  return { success: false as const, message: NOT_IMPLEMENTED };
-};
-
-export const createUnits = async (_input: CreateUnitsInput) => {
-  return { success: false as const, message: NOT_IMPLEMENTED };
-};
-
 export const createPropertyDraft = async (
   _data: z.infer<typeof createPropertyDraftSchema>,
 ) => {
@@ -224,14 +204,6 @@ export const completeSingleUnitProperty = async (
 export const completeMultiUnitProperty = async (
   _input: CompleteMultiUnitInput,
 ) => {
-  return { success: false as const, message: NOT_IMPLEMENTED };
-};
-
-export const getPropertyProgress = async (_propertyId: string) => {
-  return { success: false as const, message: NOT_IMPLEMENTED };
-};
-
-export const getPropertyForEdit = async (_propertyId: string) => {
   return { success: false as const, message: NOT_IMPLEMENTED };
 };
 
@@ -266,8 +238,4 @@ export const updateMultipleUnits = async (
 
 export const deleteProperty = async (_propertyId: string) => {
   return { success: false as const, message: NOT_IMPLEMENTED };
-};
-
-export const getAvailableUnitsByProperty = async (_propertyId: string) => {
-  return { success: false as const, units: [], message: NOT_IMPLEMENTED };
 };

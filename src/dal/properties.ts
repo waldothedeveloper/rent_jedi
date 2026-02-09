@@ -11,17 +11,3 @@ export const verifySessionDAL = cache(async () => {
 
   return session;
 });
-
-// Stubs — DAL functions will be rebuilt in the next PR
-
-export const getDraftPropertyByOwnerDAL = cache(async () => {
-  return { success: true as const, data: undefined };
-});
-
-export const getPropertyByIdDAL = cache(async (_propertyId: string) => {
-  return {
-    success: false as const,
-    data: undefined,
-    message: "Property DAL is being rebuilt.",
-  };
-});
