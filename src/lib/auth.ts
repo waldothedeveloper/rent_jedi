@@ -1,11 +1,4 @@
 import {
-  globalAC,
-  platformAdmin,
-  organizationAC,
-  orgOwner,
-  orgManager,
-} from "@/lib/permissions";
-import {
   account,
   invitation,
   member,
@@ -15,6 +8,11 @@ import {
   user,
   verification,
 } from "@/db/schema/auth-schema";
+import {
+  orgOwner,
+  orgTenant,
+  organizationAccessController,
+} from "@/lib/permissions";
 import {
   admin as adminPlugin,
   organization as organizationPlugin,
@@ -47,20 +45,15 @@ export const auth = betterAuth({
   trustedOrigins: ["http://localhost:3000", "https://bloomrent.com"],
   plugins: [
     organizationPlugin({
-      ac: organizationAC,
+      ac: organizationAccessController,
       roles: {
         owner: orgOwner,
-        manager: orgManager,
+        tenant: orgTenant,
       },
       creatorRole: "owner",
     }),
     twoFactorPlugin(),
-    adminPlugin({
-      ac: globalAC,
-      roles: {
-        admin: platformAdmin,
-      },
-    }),
+    adminPlugin(),
     nextCookies(),
   ],
   emailVerification: {

@@ -14,14 +14,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 # Development
-npm run dev                    # Start development server with Turbopack
+npm run dev                    # Start development server
 
 # Database (Drizzle ORM)
 npm run db:push                # Push schema directly to DB (dev only)
-
+npm run db:generate            # Generate Drizzle migrations
+npm run db:migrate             # Run Drizzle migrations
+npm run db:studio              # Open Drizzle Studio
 
 # Authentication
 npm run auth:generate          # Generate Better Auth schema
+
+# E2E Testing (Playwright)
+npm run test:e2e               # Run Playwright tests
+npm run test:e2e:ui            # Run Playwright tests with UI
+npm run test:e2e:report        # Show Playwright test report
+npm run test:cleanup           # Clean up test data
 
 # Production
 npm run build                  # Build for production
@@ -93,34 +101,39 @@ border - border; // Instead of border-gray-200, border-gray-300
 ### Authentication Flow
 
 ```
-Sign Up → Email Verification → Role Assignment → Dashboard Access
+Sign Up (with intent: "owner" | "tenant") → Email Verification → Dashboard Access
              ↓
     2FA Optional (TOTP + backup codes)
 ```
 
-**Protected Routes:** Use `getSessionOrRedirect()` from `/src/app/actions/auth.ts`
+**Protected Routes:** Use `getSessionOrRedirect()` or `getOrgSessionOrRedirect()` from `/src/app/actions/auth.ts`
 
-**Roles (RBAC):**
+**Two-Tier RBAC System (Better Auth plugins):**
 
-- `admin` - Full access
-- `owner` - Manage properties, units, tenants, payments, maintenance, invites
-- `manager` - Same as owner (scope enforced in business logic)
-- `tenant` - View property, create maintenance requests, pay rent
+Global roles (`admin` plugin — platform-wide):
+- `user` - Default authenticated user
+- `admin` - Full user/session/platform management
+
+Organization roles (`organization` plugin — org-scoped):
+- `owner` - Full CRUD on all org resources (property, unit, maintenance, message) + org management
+- `tenant` - Read-only (`view`, `list`) on all org resources
+
+**Permissions are defined in `/src/lib/permissions.ts`.** Org resources: `property`, `unit`, `maintenance`, `message`.
 
 ### Data Hierarchy
 
 ```
-User (Owner)
+Organization (created by Owner)
   └── Property
         └── Unit
-              └── Tenant
+              └── Tenant (invited as org member)
                     ├── Payment (with late fees)
                     └── Maintenance Request
 ```
 
 ### Form Pattern
 
-1. Define Zod schema in `/src/lib/shared-auth-schema.ts` or co-located with component, and make sure you use Zod +v4 API, never OLDER versions.
+1. Define Zod schema in `/src/lib/shared-auth-schema.ts`, `/src/utils/shared-schemas.ts`, or co-located with component, and make sure you use Zod +v4 API, never OLDER versions.
 2. Create Server Action in `/src/app/actions/`
 3. Use TanStack Form or React Hook Form for client-side state
 4. Show feedback with Sonner toast notifications
@@ -289,17 +302,17 @@ z.string().uuid();
 
 All schemas in `/src/db/schema/`:
 
-- `auth-schema.ts` - User, session, account, verification, two_factor
-- `properties-schema.ts` - Properties owned by users
-- `units-schema.ts` - Rental units within properties
-- `tenants-schema.ts` - Tenant information
-- `payments-schema.ts` - Payment records with late fee config
-- `maintenance-schema.ts` - Maintenance requests
-- `invites-schema.ts` - Invitation system for tenants/managers
+- `auth-schema.ts` - User, session, account, verification, twoFactor, organization, member, invitation
+- `auth-relations.ts` - Drizzle relations for auth tables
+- `properties-schema.ts` - Properties owned by organizations (with propertyType, propertyStatus, usState, unitType enums)
+- `units-schema.ts` - Rental units within properties (bedrooms, bathrooms, rent amounts)
+
+**Not yet created:** `tenants-schema.ts`, `payments-schema.ts`, `maintenance-schema.ts` (invitations handled by Better Auth organization plugin)
 
 **Schema Conventions:**
 
 - UUID primary keys (auto-generated)
+- Properties/units reference `organizationId` (not userId directly)
 - Email validation: `^[^@\s]+@[^@\s]+\.[^@\s]+$`
 - Phone validation: `^\+[1-9]\d{1,14}$` (E.164 format)
 - Automatic `createdAt`/`updatedAt` timestamps
@@ -317,8 +330,11 @@ All schemas in `/src/db/schema/`:
 
 - `/src/lib/auth.ts` - Better Auth server config (password rules: 12-128 chars)
 - `/src/lib/auth-client.ts` - Client-side auth hooks
-- `/src/lib/permissions.ts` - RBAC definitions
+- `/src/lib/permissions.ts` - RBAC definitions (global + org access control)
+- `/src/lib/auth-utils.ts` - Server-side role routing (`getRedirectUrlByRole`)
+- `/src/lib/auth-utils-client.ts` - Client-side role routing + intent routing (`getRedirectUrlByIntent`)
 - `/src/app/actions/auth.ts` - All auth Server Actions
+- `/src/types/roles.ts` - Role type definitions (`GlobalRole`, `OrgRole`, `AuthorizedContext`)
 
 **Database:**
 
@@ -326,48 +342,70 @@ All schemas in `/src/db/schema/`:
 - `/src/db/drizzle.ts` - Database client initialization
 - `/envConfig.ts` - Environment variable loader
 
+**DAL (Data Access Layer):**
+
+- `/src/dal/properties.ts` - Property data access with `verifySessionDAL()`
+- `/src/dal/address-validation.ts` - Google Maps Address Validation integration
+
 **UI Configuration:**
 
 - `/components.json` - shadcn/ui config (New York variant, neutral colors)
 - `/src/app/globals.css` - Global styles and CSS variables
 - `/src/lib/utils.ts` - `cn()` function and utility regex patterns
 
+**Shared Schemas & Utilities:**
+
+- `/src/lib/shared-auth-schema.ts` - Auth form Zod schemas (login, signup, password reset, TOTP)
+- `/src/utils/shared-schemas.ts` - Property/unit/address Zod schemas and form helpers
+- `/src/utils/form-helpers.ts` - Phone normalization, property/unit type options, US states
+- `/src/types/google-maps.ts` - Google Maps Address Validation API types
+
 **Entry Points:**
 
 - `/src/app/page.tsx` - Landing page
-- `/src/app/owners/layout.tsx` - Protected sidebar layout
-- `/src/app/owners/dashboard/page.tsx` - Owner dashboard
+- `/src/app/(without-navigation)/owners/` - Protected owner dashboard
+- `/src/app/(with-navigation)/rental-marketplace/` - Tenant-facing marketplace
 
 ## Directory Structure
 
 ```
 /src/app/
-  ├── actions/              # Server Actions (auth, properties, etc.)
+  ├── actions/              # Server Actions (auth, properties, address-validation)
   ├── api/                  # API routes (auth handler, email sender)
-  ├── owners/               # Protected owner dashboard
-  │   ├── dashboard/
-  │   ├── properties/
-  │   ├── maintenance/
-  │   ├── payments/
-  │   ├── messages/
-  │   ├── account-settings/
-  │   ├── billing/
-  │   └── notifications/
-  ├── login/
-  ├── signup/
-  ├── verify-email/
-  ├── forgot-password/
-  ├── reset-password/
-  └── admin/
+  ├── (with-navigation)/    # Public routes with navigation bar
+  │   ├── login/
+  │   ├── signup/
+  │   ├── verify-email/
+  │   ├── forgot-password/
+  │   ├── reset-password/
+  │   ├── contact-support/
+  │   └── rental-marketplace/
+  └── (without-navigation)/ # Protected routes without main nav
+      ├── admin/dashboard/
+      ├── auth-success/     # OAuth redirect handler
+      ├── owners/           # Owner dashboard
+      │   ├── dashboard/
+      │   ├── properties/   # Includes multi-step add-property wizard
+      │   ├── maintenance/
+      │   ├── payments/
+      │   ├── messages/
+      │   ├── account-settings/
+      │   ├── billing/
+      │   └── notifications/
+      └── tenants/dashboard/
 
 /src/components/
   ├── ui/                   # shadcn/ui components
   ├── email-templates/      # React Email templates
-  └── [app components]      # app-sidebar, nav-main, etc.
+  └── [app components]      # app-sidebar, nav-main, error-component, etc.
 
+/src/dal/                   # Data Access Layer (server-only)
 /src/db/schema/             # Drizzle schemas
-/src/lib/                   # Utilities and config
+/src/lib/                   # Auth config and utilities
+/src/types/                 # TypeScript type definitions (roles, google-maps)
+/src/utils/                 # Shared schemas and form helpers
 /src/hooks/                 # React hooks
+/src/e2e/                   # Playwright E2E tests
 ```
 
 ## Environment Variables
@@ -382,6 +420,7 @@ NEXT_PUBLIC_BASE_URL=      # Base URL for client-side
 GOOGLE_CLIENT_ID=          # Google OAuth
 GOOGLE_CLIENT_SECRET=      # Google OAuth secret
 RESEND_API_KEY=            # Resend for emails
+GOOGLE_MAPS_API_KEY=       # Google Maps Address Validation
 ```
 
 ## Path Aliases
@@ -390,6 +429,8 @@ RESEND_API_KEY=            # Resend for emails
 - `@/lib` → `/src/lib`
 - `@/hooks` → `/src/hooks`
 - `@/db` → `/src/db`
+- `@/utils` → `/src/utils`
+- `@/ui` → `/src/components/ui`
 
 ## Development Philosophy
 

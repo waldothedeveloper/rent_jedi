@@ -1,5 +1,5 @@
 export type GlobalRole = "user" | "admin";
-export type OrgRole = "owner" | "manager";
+export type OrgRole = "owner" | "tenant";
 
 // Temporary: Combined role type for backwards compatibility during migration
 // TODO: Remove after DAL layer is migrated to organization-scoped permissions

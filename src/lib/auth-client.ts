@@ -1,9 +1,7 @@
 import {
-  globalAC,
-  platformAdmin,
-  organizationAC,
   orgOwner,
-  orgManager,
+  orgTenant,
+  organizationAccessController,
 } from "@/lib/permissions";
 import {
   adminClient,
@@ -16,18 +14,14 @@ import { createAuthClient } from "better-auth/react";
 export const authClient = createAuthClient({
   plugins: [
     organizationClient({
-      ac: organizationAC,
+      ac: organizationAccessController,
       roles: {
         owner: orgOwner,
-        manager: orgManager,
+        tenant: orgTenant,
       },
     }),
-    adminClient({
-      ac: globalAC,
-      roles: {
-        admin: platformAdmin,
-      },
-    }),
+
     twoFactorClient(),
+    adminClient(),
   ],
 });

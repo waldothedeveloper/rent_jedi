@@ -30,7 +30,7 @@ export function getRedirectUrlByRole(role: string | null | undefined): string {
     user: "/owners/dashboard", // Default for authenticated users
     // Org roles
     owner: "/owners/dashboard",
-    manager: "/owners/dashboard",
+    tenant: "/rental-marketplace",
   };
 
   return roleRouteMap[role as RoutableRole];
