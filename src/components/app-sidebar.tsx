@@ -1,13 +1,3 @@
-"use client";
-
-import * as React from "react";
-
-import {
-  DollarSign,
-  House,
-  MessageCircleMore,
-  Wrench,
-} from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -19,46 +9,52 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { NavMain } from "@/components/nav-main";
+import type { NavMainItem } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
-import type { User } from "better-auth";
 import logo from "@/app/images/bloom_rent_logo.svg";
+import { verifySessionDAL } from "@/dal/shared-dal-helpers";
 
-// This is sample data.
-const data = {
-  navMain: [
-    {
-      title: "Properties",
-      url: "/owners/properties",
-      icon: House,
-      isActive: true,
-    },
-    {
-      title: "Payments",
-      url: "/owners/payments",
-      icon: DollarSign,
-    },
-    {
-      title: "Maintenance",
-      url: "/owners/maintenance",
-      icon: Wrench,
-    },
-    {
-      title: "Messages",
-      url: "/owners/messages",
-      icon: MessageCircleMore,
-    },
-  ],
-};
+const navItems: NavMainItem[] = [
+  {
+    title: "Dashboard",
+    url: "/owners/dashboard",
+    iconName: "Gauge",
+    isActive: true,
+  },
+  {
+    title: "Properties",
+    url: "/owners/properties",
+    iconName: "House",
+  },
+  {
+    title: "Tenants",
+    url: "/owners/tenants",
+    iconName: "User",
+  },
+  {
+    title: "Payments",
+    url: "/owners/payments",
+    iconName: "DollarSign",
+  },
+  {
+    title: "Maintenance",
+    url: "/owners/maintenance",
+    iconName: "Wrench",
+  },
+  {
+    title: "Messages",
+    url: "/owners/messages",
+    iconName: "MessageCircleMore",
+  },
+];
 
-type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
-  user: User;
-};
+export async function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
+  const session = await verifySessionDAL();
 
-export function AppSidebar({ user, ...props }: AppSidebarProps) {
   const sidebarUser = {
-    name: user.name ?? "User",
-    email: user.email ?? "user@example.com",
-    avatar: user.image ?? undefined,
+    name: session?.user?.name ?? "User",
+    email: session?.user?.email ?? "user@example.com",
+    avatar: session?.user?.image ?? undefined,
   };
 
   return (
@@ -72,7 +68,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
         </Link>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
+        <NavMain items={navItems} />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={sidebarUser} />

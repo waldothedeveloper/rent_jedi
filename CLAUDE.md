@@ -10,6 +10,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Development Status:** Week 2 of 8-week roadmap (see README.md for full roadmap)
 
+## **NEVER RUN DATABASE COMMANDS**
+
+**NEVER RUN `npm run db:push`, `npm run db:generate`, `npm run db:migrate`, OR ANY OTHER DATABASE MIGRATION/PUSH COMMANDS. THE USER WILL RUN THESE MANUALLY. ONLY MAKE THE SCHEMA FILE CHANGES AND TELL THE USER WHAT COMMAND TO RUN.**
+
 ## Common Commands
 
 ```bash
@@ -106,15 +110,17 @@ Sign Up (with intent: "owner" | "tenant") → Email Verification → Dashboard A
     2FA Optional (TOTP + backup codes)
 ```
 
-**Protected Routes:** Use `getSessionOrRedirect()` or `getOrgSessionOrRedirect()` from `/src/app/actions/auth.ts`
+**Protected Routes:** Use `getSessionOrRedirect()` or from `/src/app/actions/auth.ts`
 
 **Two-Tier RBAC System (Better Auth plugins):**
 
 Global roles (`admin` plugin — platform-wide):
+
 - `user` - Default authenticated user
 - `admin` - Full user/session/platform management
 
 Organization roles (`organization` plugin — org-scoped):
+
 - `owner` - Full CRUD on all org resources (property, unit, maintenance, message) + org management
 - `tenant` - Read-only (`view`, `list`) on all org resources
 
@@ -159,6 +165,13 @@ Organization (created by Owner)
    - Return only the fields the current user is authorized to see
    - Never return full database rows to Server Actions
    - Create explicit return types that exclude sensitive fields
+
+4. **Route Guards Live in `/src/lib/route-guards.ts`, Not in Layouts/Pages**
+   - Authorization + redirect logic MUST be self-contained guard functions (e.g. `requireOwnerMembership()`)
+   - Guards import from the DAL for data access, then handle the redirect
+   - Layouts and pages call the guard function — they NEVER contain inline auth/redirect logic
+   - Example: `await requireOwnerMembership()` in a layout — one line, no conditionals
+   - DAL functions stay pure: query data, return DTOs — no routing side effects
 
 #### DTO Pattern Example
 
@@ -331,6 +344,7 @@ All schemas in `/src/db/schema/`:
 - `/src/lib/auth.ts` - Better Auth server config (password rules: 12-128 chars)
 - `/src/lib/auth-client.ts` - Client-side auth hooks
 - `/src/lib/permissions.ts` - RBAC definitions (global + org access control)
+- `/src/lib/route-guards.ts` - Route guard functions (`requireOwnerMembership`)
 - `/src/lib/auth-utils.ts` - Server-side role routing (`getRedirectUrlByRole`)
 - `/src/lib/auth-utils-client.ts` - Client-side role routing + intent routing (`getRedirectUrlByIntent`)
 - `/src/app/actions/auth.ts` - All auth Server Actions
@@ -344,6 +358,7 @@ All schemas in `/src/db/schema/`:
 
 **DAL (Data Access Layer):**
 
+- `/src/dal/shared-dal-helpers.ts` - Session verification (`verifySessionDAL`), membership helpers (`getUserMembership`), login redirect (`getLoginRedirectUrl`)
 - `/src/dal/properties.ts` - Property data access with `verifySessionDAL()`
 - `/src/dal/address-validation.ts` - Google Maps Address Validation integration
 

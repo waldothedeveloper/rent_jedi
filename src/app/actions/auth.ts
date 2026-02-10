@@ -10,6 +10,7 @@ import {
 
 import { APIError } from "better-auth/api";
 import { auth } from "@/lib/auth";
+import { getLoginRedirectUrl } from "@/dal/shared-dal-helpers";
 import { getRedirectUrlByRole } from "@/lib/auth-utils";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -41,29 +42,6 @@ export async function getSessionOrRedirect() {
   }
 
   return session;
-}
-
-export async function getOrgSessionOrRedirect(options?: {
-  requireOrg?: boolean;
-}) {
-  const session = await auth.api.getSession({ headers: await headers() });
-
-  if (!session) {
-    redirect("/login");
-  }
-
-  const activeOrgId = session.session.activeOrganizationId;
-
-  // If organization required but not set, redirect to dashboard
-  if (options?.requireOrg && !activeOrgId) {
-    redirect("/owners/dashboard?needsOrganization=true");
-  }
-
-  return {
-    session: session.session,
-    user: session.user,
-    organizationId: activeOrgId,
-  };
 }
 
 export async function resendVerificationEmailAction() {
@@ -98,7 +76,10 @@ export async function resendVerificationEmailAction() {
   };
 }
 
-export async function signUpAction(credentials: z.infer<typeof signUpSchema>) {
+export async function signUpAction(
+  credentials: z.infer<typeof signUpSchema>,
+  intent?: string,
+) {
   const result = signUpSchema.safeParse(credentials);
 
   if (!result.success) {
@@ -112,13 +93,10 @@ export async function signUpAction(credentials: z.infer<typeof signUpSchema>) {
         email,
         password,
         name,
+        intent: intent ?? undefined,
       },
       asResponse: true,
     });
-
-    console.log(`Sign-up response data: `, data);
-
-    // redirect(`/verify-email`);
   } catch (error) {
     if (error instanceof APIError) {
       return {
@@ -134,24 +112,8 @@ export async function signUpAction(credentials: z.infer<typeof signUpSchema>) {
   }
 }
 
-export async function signUpWithGoogleAction() {
-  const res = await auth.api.signInSocial({
-    body: {
-      provider: "google",
-    },
-  });
-
-  if ("user" in res && res.user.emailVerified) {
-    const role = res.user.role;
-    redirect(getRedirectUrlByRole(role));
-  }
-  redirect("/verify-email");
-}
-
 export async function loginAction(credentials: z.infer<typeof loginSchema>) {
   const parsed = loginSchema.safeParse(credentials);
-  const session = await auth.api.getSession({ headers: await headers() });
-  console.log("user??????????????????: ", session?.user);
 
   if (!parsed.success) {
     return {
@@ -169,15 +131,7 @@ export async function loginAction(credentials: z.infer<typeof loginSchema>) {
       return { success: true, redirectTo: "/login/verify-totp" };
     }
 
-    // Prefer role from sign-in response to avoid relying on a newly set cookie
-    const roleFromResponse =
-      "user" in response && response.user ? response.user.role : undefined;
-    const role =
-      roleFromResponse ??
-      (await auth.api.getSession({ headers: await headers() }))?.user?.role;
-    console.log("FINAL ROLE IN LOGIN ACTION: ", role);
-
-    const redirectUrl = getRedirectUrlByRole(role);
+    const redirectUrl = await getLoginRedirectUrl(response.user.id);
 
     return { success: true as const, redirectTo: redirectUrl };
   } catch (error: unknown) {
@@ -219,13 +173,7 @@ export async function verifyTotpAction(payload: {
       headers: await headers(),
     });
 
-    // Fetch session to get user role
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
-
-    const role = session?.user?.role;
-    const redirectUrl = getRedirectUrlByRole(role);
+    const redirectUrl = await getLoginRedirectUrl();
 
     return { success: true as const, redirectTo: redirectUrl };
   } catch (error: unknown) {
@@ -321,9 +269,13 @@ export async function resetPasswordAction(
   }
 }
 
+export async function getPostLoginRedirectAction(): Promise<string> {
+  return getLoginRedirectUrl();
+}
+
 export async function logoutAction() {
   await auth.api.signOut({
     headers: await headers(),
   });
-  redirect("/login");
+  redirect("/");
 }

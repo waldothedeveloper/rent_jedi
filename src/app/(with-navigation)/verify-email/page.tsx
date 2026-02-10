@@ -2,9 +2,9 @@ import { EmailForm } from "./email-form";
 import Link from "next/link";
 import { SharedAuthHeader } from "@/components/shared-auth-header";
 import { auth } from "@/lib/auth";
+import { getLoginRedirectUrl } from "@/dal/shared-dal-helpers";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { getRedirectUrlByRole } from "@/lib/auth-utils";
 
 export default async function VerifyEmailPage() {
   // Check if user has verified email (session exists with emailVerified)
@@ -12,10 +12,9 @@ export default async function VerifyEmailPage() {
     headers: await headers(),
   });
 
-  // If verified, redirect to role-based dashboard
+  // If verified, redirect based on org membership
   if (session?.user?.emailVerified) {
-    const role = session.user.role;
-    const redirectUrl = getRedirectUrlByRole(role);
+    const redirectUrl = await getLoginRedirectUrl();
     redirect(redirectUrl);
   }
 
