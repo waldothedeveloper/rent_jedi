@@ -7,18 +7,17 @@ import {
 import { Home, Search } from "lucide-react";
 
 import Link from "next/link";
+import { getLoginRedirectUrl } from "@/dal/shared-dal-helpers";
 import { getSessionOrRedirect } from "@/app/actions/auth";
-import { getRedirectUrlByRole } from "@/lib/auth-utils";
-import { isOrgRole } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 
 export default async function SelectRolePage() {
   const session = await getSessionOrRedirect();
 
-  // If user already has an org role, send them to their dashboard
-  const role = session.user.role;
-  if (isOrgRole(role)) {
-    redirect(getRedirectUrlByRole(role));
+  // If user already has an org membership, send them to their dashboard
+  const redirectUrl = await getLoginRedirectUrl();
+  if (redirectUrl !== "/select-role") {
+    redirect(redirectUrl);
   }
 
   return (

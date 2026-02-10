@@ -8,7 +8,7 @@ import type {
 } from "@/types/google-maps";
 
 import { cache } from "react";
-import { verifySessionDAL } from "@/dal/properties";
+import { verifySessionDAL } from "@/dal/shared-dal-helpers";
 
 /**
  * Validates an address using Google Maps Address Validation API

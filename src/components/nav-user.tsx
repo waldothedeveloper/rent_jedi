@@ -103,19 +103,19 @@ export function NavUser({ user }: NavUserProps) {
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <Link href="/owners/dashboard/account-settings">
+              <Link href="/owners/account-settings">
                 <DropdownMenuItem>
                   <BadgeCheck />
                   Account
                 </DropdownMenuItem>
               </Link>
-              <Link href="/owners/dashboard/billing">
+              <Link href="/owners/billing">
                 <DropdownMenuItem>
                   <CreditCard />
                   Billing
                 </DropdownMenuItem>
               </Link>
-              <Link href="/owners/dashboard/notifications">
+              <Link href="/owners/notifications">
                 <DropdownMenuItem>
                   <Bell />
                   Notifications

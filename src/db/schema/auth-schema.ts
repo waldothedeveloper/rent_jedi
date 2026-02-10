@@ -1,6 +1,7 @@
 import {
   boolean,
   index,
+  pgEnum,
   pgTable,
   text,
   timestamp,
@@ -8,6 +9,8 @@ import {
 } from "drizzle-orm/pg-core";
 
 import { relations } from "drizzle-orm";
+
+export const intentEnum = pgEnum("intent", ["owner", "tenant"]);
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -25,6 +28,7 @@ export const user = pgTable("user", {
   banned: boolean("banned").default(false),
   banReason: text("ban_reason"),
   banExpires: timestamp("ban_expires"),
+  intent: intentEnum("intent"),
 });
 
 export const session = pgTable(

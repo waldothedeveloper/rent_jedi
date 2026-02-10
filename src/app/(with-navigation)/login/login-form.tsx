@@ -25,13 +25,23 @@ import { cn } from "@/lib/utils";
 import { loginAction } from "@/app/actions/auth";
 import { loginSchema } from "@/lib/shared-auth-schema";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get("error") === "signup_disabled") {
+      toast.error(
+        "No account found for that Google login. Please sign up first.",
+      );
+    }
+  }, [searchParams]);
 
   const title = "Login to your Account";
   const description =
@@ -89,6 +99,7 @@ export function LoginForm({
                     await authClient.signIn.social({
                       provider: "google",
                       callbackURL: "/auth-success",
+                      errorCallbackURL: "/login",
                     });
                   }}
                 >

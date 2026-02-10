@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
-import { getRedirectUrl } from "@/lib/auth-utils-client";
+import { getPostLoginRedirectAction } from "@/app/actions/auth";
 
 export default function AuthSuccessPage() {
   const router = useRouter();
@@ -17,10 +17,7 @@ export default function AuthSuccessPage() {
         return;
       }
 
-      const intent = sessionStorage.getItem("signup_intent");
-      if (intent) sessionStorage.removeItem("signup_intent");
-
-      const redirectUrl = getRedirectUrl({ role: session.user.role, intent });
+      const redirectUrl = await getPostLoginRedirectAction();
       router.push(redirectUrl);
     }
 

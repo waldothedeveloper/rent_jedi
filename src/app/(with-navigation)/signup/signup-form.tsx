@@ -29,11 +29,7 @@ interface SignupFormProps extends React.ComponentProps<"div"> {
   intent?: string;
 }
 
-export function SignupForm({
-  intent,
-  className,
-  ...props
-}: SignupFormProps) {
+export function SignupForm({ intent, className, ...props }: SignupFormProps) {
   const isTenant = intent === "tenant";
   const title = "Create Your Account";
   const description = isTenant
@@ -58,7 +54,7 @@ export function SignupForm({
     },
     onSubmit: async ({ value, formApi }) => {
       try {
-        await signUpAction(value);
+        await signUpAction(value, intent);
         toast.success("Account created! Please check your email.");
         formApi.reset();
       } catch (error) {
@@ -198,10 +194,13 @@ export function SignupForm({
                     if (intent) {
                       sessionStorage.setItem("signup_intent", intent);
                     }
+                    // Set cookie for server-side hook (OAuth flow)
+                    document.cookie = `signup_intent=${intent}; path=/; max-age=600; samesite=lax`;
 
                     await authClient.signIn.social({
                       provider: "google",
                       callbackURL: "/auth-success",
+                      requestSignUp: true,
                     });
                   }}
                 >
