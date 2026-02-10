@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { authClient } from "@/lib/auth-client";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { signUpAction } from "@/app/actions/auth";
 import { signUpSchema } from "@/lib/shared-auth-schema";
@@ -30,6 +31,7 @@ interface SignupFormProps extends React.ComponentProps<"div"> {
 }
 
 export function SignupForm({ intent, className, ...props }: SignupFormProps) {
+  const router = useRouter();
   const isTenant = intent === "tenant";
   const title = "Create Your Account";
   const description = isTenant
@@ -52,11 +54,14 @@ export function SignupForm({ intent, className, ...props }: SignupFormProps) {
       onSubmit: signUpSchema,
       onDynamic: signUpSchema,
     },
-    onSubmit: async ({ value, formApi }) => {
+    onSubmit: async ({ value }) => {
       try {
-        await signUpAction(value, intent);
-        toast.success("Account created! Please check your email.");
-        formApi.reset();
+        const result = await signUpAction(value, intent);
+        if (result && "success" in result && result.success === false) {
+          toast.error(result.message);
+          return;
+        }
+        router.push("/verify-email");
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Something went wrong";

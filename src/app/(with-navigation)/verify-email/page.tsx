@@ -7,12 +7,10 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 export default async function VerifyEmailPage() {
-  // Check if user has verified email (session exists with emailVerified)
   const session = await auth.api.getSession({
     headers: await headers(),
   });
 
-  // If verified, redirect based on org membership
   if (session?.user?.emailVerified) {
     const redirectUrl = await getLoginRedirectUrl();
     redirect(redirectUrl);

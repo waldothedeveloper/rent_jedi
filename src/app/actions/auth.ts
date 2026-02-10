@@ -19,7 +19,7 @@ import { z } from "zod";
 type HeadersLike = Pick<Headers, "get"> | null | undefined;
 
 function getBaseUrl(headersList?: HeadersLike) {
-  const envUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL;
+  const envUrl = process.env.VERCEL_URL;
   const origin = headersList?.get("origin");
   const host = headersList?.get("host");
   const rawBase = envUrl ?? origin ?? (host ? `http://${host}` : undefined);
