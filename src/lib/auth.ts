@@ -73,6 +73,9 @@ export const auth = betterAuth({
     sendOnSignIn: true,
     sendOnSignUp: true,
     sendVerificationEmail: async ({ user, url }) => {
+      const betterAuthUrl = new URL(url);
+      betterAuthUrl.searchParams.set("callbackURL", "/email-verified");
+
       await fetch(apiSendUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -80,7 +83,7 @@ export const auth = betterAuth({
           to: user.email,
           subject: "Verify your Bloom Rent email",
           firstName: user.name,
-          verificationUrl: url,
+          verificationUrl: betterAuthUrl.toString(),
           template: "email-verification",
         }),
       }).catch((error) => {});

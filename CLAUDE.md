@@ -431,7 +431,6 @@ Required variables (see `.env.local`):
 DATABASE_URL=              # Neon PostgreSQL connection string
 BETTER_AUTH_SECRET=        # Random secret for auth
 BETTER_AUTH_URL=           # Production URL
-NEXT_PUBLIC_BASE_URL=      # Base URL for client-side
 GOOGLE_CLIENT_ID=          # Google OAuth
 GOOGLE_CLIENT_SECRET=      # Google OAuth secret
 RESEND_API_KEY=            # Resend for emails
