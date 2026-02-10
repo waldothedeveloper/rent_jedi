@@ -9,15 +9,15 @@ import {
   verification,
 } from "@/db/schema/auth-schema";
 import {
-  orgOwner,
-  orgTenant,
-  organizationAccessController,
-} from "@/lib/permissions";
-import {
   admin as adminPlugin,
   organization as organizationPlugin,
   twoFactor as twoFactorPlugin,
 } from "better-auth/plugins";
+import {
+  orgOwner,
+  orgTenant,
+  organizationAccessController,
+} from "@/lib/permissions";
 
 import type { User } from "better-auth";
 import { betterAuth } from "better-auth";
@@ -33,7 +33,7 @@ type OnPasswordResetPayload = { user: User };
 const apiSendUrl =
   process.env.NODE_ENV === "development"
     ? "http://localhost:3000/api/send"
-    : `https://${process.env.VERCEL_URL}/api/send`;
+    : `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}/api/send`;
 
 export const auth = betterAuth({
   appName: "Bloom Rent",
